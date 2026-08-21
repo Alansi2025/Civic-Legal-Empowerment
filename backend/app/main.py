@@ -62,6 +62,7 @@ def health_check():
 
 
 @app.post("/api/triage", response_model=TriageResult)
+@app.post("/api/grievance/process", response_model=TriageResult)
 def run_triage(intake: GrievanceInput):
     """Execute Legal Triage Agent."""
     try:
@@ -72,15 +73,22 @@ def run_triage(intake: GrievanceInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
 @app.post("/api/draft", response_model=StatutoryDraft)
-def generate_legal_draft(intake: GrievanceInput, triage: TriageResult):
+@app.post("/api/grievance/draft", response_model=StatutoryDraft)
+def generate_legal_draft(payload: dict):
     """Execute Statutory RTI / Grievance Drafting Agent."""
     try:
+        intake_dict = payload.get("intake", payload)
+        triage_dict = payload.get("triage", {})
+        intake = GrievanceInput(**intake_dict) if isinstance(intake_dict, dict) else intake_dict
+        triage = TriageResult(**triage_dict) if isinstance(triage_dict, dict) else triage_dict
         draft = orchestrator.process_drafting("GRIEVANCE-TEMP", intake, triage)
         return draft
     except Exception as e:
         logger.error(f"Error in /api/draft: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.post("/api/consent/scan", response_model=PIIAnalysisResult)
