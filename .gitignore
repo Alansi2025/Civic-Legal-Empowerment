@@ -1,0 +1,26 @@
+# Virtual Environments & Dependencies
+.venv/
+venv/
+node_modules/
+.next/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Local Database & Output Artifacts
+*.db
+civic_empowerment.db
+generated_pdfs/
+*.pdf
+
+# Environment Files (Keep secrets private)
+.env
+.env.local
+.env.production
+
+# System Files
+.DS_Store
+*.log

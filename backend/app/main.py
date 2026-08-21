@@ -1,0 +1,186 @@
+import os
+import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
+
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from app.config import settings
+from app.db import init_db, get_all_filings
+from app.models import (
+    GrievanceInput, TriageResult, StatutoryDraft, PIIAnalysisResult,
+    ConsentVerificationRequest, ConsentVerificationResponse,
+    PortalFilingRequest, PortalFilingResult, QAAuditReport,
+    DigiLockerAuthRequest, DigiLockerPushRequest
+)
+
+from app.auth import LoginRequest
+from app.agents.orchestrator import MASOrchestrator
+
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("FastAPIApp")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Initializing SQLite database & schema...")
+    init_db()
+    os.makedirs(settings.PDF_OUTPUT_DIR, exist_ok=True)
+    yield
+    logger.info("Shutdown complete.")
+
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.VERSION,
+    description="IEEE-Compliant Multi-Agent System for AI Civic and Legal Empowerment",
+    lifespan=lifespan
+)
+
+# Enable CORS for Next.js frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+orchestrator = MASOrchestrator()
+
+
+@app.get("/")
+def health_check():
+    return {
+        "status": "HEALTHY",
+        "app_name": settings.APP_NAME,
+        "version": settings.VERSION,
+        "ieee_7000_privacy_enforced": settings.IEEE_7000_PRIVACY_ENFORCED
+    }
+
+
+@app.post("/api/triage", response_model=TriageResult)
+def run_triage(intake: GrievanceInput):
+    """Execute Legal Triage Agent."""
+    try:
+        _, triage_res = orchestrator.process_triage(intake)
+        return triage_res
+    except Exception as e:
+        logger.error(f"Error in /api/triage: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/draft", response_model=StatutoryDraft)
+def generate_legal_draft(intake: GrievanceInput, triage: TriageResult):
+    """Execute Statutory RTI / Grievance Drafting Agent."""
+    try:
+        draft = orchestrator.process_drafting("GRIEVANCE-TEMP", intake, triage)
+        return draft
+    except Exception as e:
+        logger.error(f"Error in /api/draft: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/consent/scan", response_model=PIIAnalysisResult)
+def scan_pii(payload: dict):
+    """Scan text for PII entities & return masked version."""
+    text = payload.get("text", "")
+    return orchestrator.scan_draft_pii(text)
+
+
+@app.post("/api/consent/verify", response_model=ConsentVerificationResponse)
+def verify_consent(req: ConsentVerificationRequest):
+    """Verify citizen digital signature & issue IEEE 7000 consent token."""
+    return orchestrator.verify_consent(req)
+
+
+@app.post("/api/portal/submit", response_model=PortalFilingResult)
+async def submit_to_portal(req: PortalFilingRequest):
+    """Execute Playwright Portal Automation Agent."""
+    try:
+        return await orchestrator.execute_portal_filing(req)
+    except Exception as e:
+        logger.error(f"Error in /api/portal/submit: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/pdf/download/{filing_id}")
+def download_pdf(filing_id: str):
+    """Download synthesized statutory PDF with QR verification stamp."""
+    file_path = os.path.join(settings.PDF_OUTPUT_DIR, f"Statutory_Petition_{filing_id}.pdf")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="PDF receipt file not found.")
+    return FileResponse(file_path, media_type="application/pdf", filename=f"Statutory_Petition_{filing_id}.pdf")
+
+
+@app.get("/api/qa/audit", response_model=QAAuditReport)
+def run_qa_audit():
+    """Run IEEE QA & Code Evaluation Agent system self-audit."""
+    return orchestrator.audit_system()
+
+
+@app.post("/api/auth/login")
+def supervisor_login(req: LoginRequest):
+    """Authenticate Supervisor / Administrator login."""
+    from app.auth import authenticate_supervisor
+    return authenticate_supervisor(req)
+
+
+@app.get("/api/agents/supervisor/logs")
+def get_supervisor_logs():
+    """Retrieve Agent Supervisor telemetry & event work log."""
+    from app.agents.supervisor import supervisor
+    return supervisor.get_work_summary()
+
+
+
+@app.post("/api/audio/transcribe")
+async def transcribe_citizen_audio(
+    file: UploadFile = File(...),
+    language_code: str = Form("hi-IN")
+):
+    """Transcribe citizen regional Indian voice recording via Sarvam AI."""
+    from app.sarvam_engine import sarvam_engine
+    audio_bytes = await file.read()
+    return sarvam_engine.transcribe_audio(audio_bytes, language_code)
+
+
+@app.post("/api/audio/tts")
+def synthesize_regional_speech(payload: dict):
+    """Synthesize regional Indian speech audio via Sarvam AI."""
+    from app.sarvam_engine import sarvam_engine
+    text = payload.get("text", "")
+    lang = payload.get("language_code", "hi-IN")
+    return sarvam_engine.text_to_speech(text, lang)
+
+
+@app.post("/api/digilocker/auth")
+def verify_digilocker_identity(req: DigiLockerAuthRequest):
+    """Authenticate citizen identity via DigiLocker Aadhaar e-KYC."""
+    from app.services.digilocker_service import digilocker_service
+    return digilocker_service.verify_citizen_aadhaar(req.citizen_name, req.aadhaar_last4)
+
+
+@app.post("/api/digilocker/push_receipt")
+def push_to_digilocker(req: DigiLockerPushRequest):
+    """Push statutory petition PDF & filing receipt to citizen DigiLocker storage account."""
+    from app.services.digilocker_service import digilocker_service
+    pdf_path = os.path.join(settings.PDF_OUTPUT_DIR, f"Statutory_Petition_{req.filing_id}.pdf")
+    return digilocker_service.push_document_to_digilocker(
+        digilocker_token=req.digilocker_token,
+        filing_id=req.filing_id,
+        document_title=req.document_title,
+        pdf_path=pdf_path,
+        receipt_hash=req.receipt_hash
+    )
+
+
+@app.get("/api/history")
+def get_filing_history():
+    """Fetch persistent audit trail & past civic filings from SQLite."""
+    return get_all_filings()
+
+
+
