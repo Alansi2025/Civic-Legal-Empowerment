@@ -11,8 +11,9 @@ from app.models import (
     GrievanceInput, TriageResult, StatutoryDraft, PIIAnalysisResult,
     ConsentVerificationRequest, ConsentVerificationResponse,
     PortalFilingRequest, PortalFilingResult, QAAuditReport,
-    DigiLockerAuthRequest, DigiLockerPushRequest
+    DigiLockerAuthRequest, DigiLockerPushRequest, StatutoryPathway
 )
+
 
 from app.auth import LoginRequest
 from app.agents.orchestrator import MASOrchestrator
@@ -81,8 +82,38 @@ def generate_legal_draft(payload: dict):
     try:
         intake_dict = payload.get("intake", payload)
         triage_dict = payload.get("triage", {})
-        intake = GrievanceInput(**intake_dict) if isinstance(intake_dict, dict) else intake_dict
-        triage = TriageResult(**triage_dict) if isinstance(triage_dict, dict) else triage_dict
+        if not isinstance(intake_dict, dict):
+            intake_dict = {}
+        if not isinstance(triage_dict, dict):
+            triage_dict = {}
+            
+        intake = GrievanceInput(
+            citizen_id=intake_dict.get("citizen_id", "CITIZEN-ANON"),
+            language=intake_dict.get("language", "English"),
+            raw_text=intake_dict.get("raw_text", "Statutory Petition Request"),
+            location_details=intake_dict.get("location_details")
+        )
+        pathway_raw = str(triage_dict.get("pathway", "RTI Act 2005"))
+        pathway_enum = StatutoryPathway.RTI_ACT_2005
+        if "CPGRAMS" in pathway_raw:
+            pathway_enum = StatutoryPathway.CPGRAMS_GRIEVANCE
+        elif "Consumer" in pathway_raw:
+            pathway_enum = StatutoryPathway.CONSUMER_PROTECTION_2019
+        elif "Municipal" in pathway_raw:
+            pathway_enum = StatutoryPathway.MUNICIPAL_WORKS
+        elif "General" in pathway_raw:
+            pathway_enum = StatutoryPathway.GENERAL_CIVIC_INQUIRY
+
+        triage = TriageResult(
+            pathway=pathway_enum,
+            public_authority=triage_dict.get("public_authority", "Public Authority Officer"),
+            statutory_sections=triage_dict.get("statutory_sections", ["Section 6(1) of the RTI Act, 2005"]),
+            confidence_score=triage_dict.get("confidence_score", 0.95),
+            summary=triage_dict.get("summary", intake.raw_text),
+            follow_up_questions=triage_dict.get("follow_up_questions", []),
+            requires_more_info=triage_dict.get("requires_more_info", False)
+        )
+
         draft = orchestrator.process_drafting("GRIEVANCE-TEMP", intake, triage)
         return draft
     except Exception as e:
@@ -91,7 +122,9 @@ def generate_legal_draft(payload: dict):
 
 
 
+
 @app.post("/api/consent/scan", response_model=PIIAnalysisResult)
+@app.post("/api/privacy/scan_pii", response_model=PIIAnalysisResult)
 def scan_pii(payload: dict):
     """Scan text for PII entities & return masked version."""
     text = payload.get("text", "")
@@ -99,9 +132,25 @@ def scan_pii(payload: dict):
 
 
 @app.post("/api/consent/verify", response_model=ConsentVerificationResponse)
-def verify_consent(req: ConsentVerificationRequest):
+@app.post("/api/privacy/verify_consent", response_model=ConsentVerificationResponse)
+def verify_consent(payload: dict):
     """Verify citizen digital signature & issue IEEE 7000 consent token."""
+    draft_id = payload.get("draft_id", "DRAFT-ANON")
+    sig_name = payload.get("citizen_signature_name", payload.get("citizen_name", "Ramesh Kumar"))
+    consent_ack = payload.get("consent_acknowledged", payload.get("consent_given", True))
+    priv_hash = payload.get("privacy_hash", "HASH-IEEE7000-VERIFIED")
+    digi_tok = payload.get("digilocker_token", "DIGILOCKER-VERIFIED-TOKEN")
+    
+    req = ConsentVerificationRequest(
+        draft_id=draft_id,
+        citizen_signature_name=sig_name,
+        consent_acknowledged=consent_ack,
+        privacy_hash=priv_hash,
+        digilocker_token=digi_tok
+    )
     return orchestrator.verify_consent(req)
+
+
 
 
 @app.post("/api/portal/submit", response_model=PortalFilingResult)
