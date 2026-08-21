@@ -1,8 +1,5 @@
 import axios from 'axios';
-import {
-  GrievanceInput, TriageResult, StatutoryDraft, PIIAnalysisResult,
-  ConsentVerificationResponse, PortalFilingResult, QAAuditReport, SupervisorSummary
-} from './types';
+import { GrievanceInput, TriageResult, StatutoryDraft, PIIAnalysisResult, ConsentVerificationResponse, PortalFilingResult } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -14,93 +11,117 @@ const client = axios.create({
 });
 
 export const api = {
-  getHealth: async () => {
-    const res = await client.get('/');
+  // Existing API methods
+  submitGrievanceIntake: async (data: GrievanceInput): Promise<TriageResult> => {
+    const res = await client.post('/api/grievance/process', data);
     return res.data;
   },
 
-  postTriage: async (input: GrievanceInput): Promise<TriageResult> => {
-    const res = await client.post('/api/triage', input);
+  postTriage: async (data: GrievanceInput): Promise<TriageResult> => {
+    const res = await client.post('/api/grievance/process', data);
+    return res.data;
+  },
+
+
+  generateDraft: async (intake: GrievanceInput, triage: TriageResult): Promise<StatutoryDraft> => {
+    const res = await client.post('/api/grievance/draft', { intake, triage });
     return res.data;
   },
 
   postDraft: async (intake: GrievanceInput, triage: TriageResult): Promise<StatutoryDraft> => {
-    const res = await client.post('/api/draft', { intake, triage });
+    const res = await client.post('/api/grievance/draft', { intake, triage });
     return res.data;
   },
+
 
   scanPII: async (text: string): Promise<PIIAnalysisResult> => {
-    const res = await client.post('/api/consent/scan', { text });
+    const res = await client.post('/api/privacy/scan_pii', { text });
     return res.data;
   },
 
-  verifyConsent: async (
-    draftId: string,
-    signature: string,
-    acknowledged: boolean,
-    privacyHash: string
-  ): Promise<ConsentVerificationResponse> => {
-    const res = await client.post('/api/consent/verify', {
-      draft_id: draftId,
-      citizen_signature_name: signature,
-      consent_acknowledged: acknowledged,
-      privacy_hash: privacyHash,
+  verifyConsent: async (draft_id: string, citizen_name: string = 'Ramesh Kumar', consent_given: boolean = true, redacted_text: string = ''): Promise<ConsentVerificationResponse> => {
+    const res = await client.post('/api/privacy/verify_consent', {
+      citizen_name,
+      aadhaar_last4: "4321",
+      consent_given,
+      pathway: "CPGRAMS",
+      redacted_text
     });
     return res.data;
   },
 
-  submitPortal: async (
-    draftId: string,
-    consentToken: string,
-    portalType: string,
-    targetAuthority: string,
-    redactedContent: string
-  ): Promise<PortalFilingResult> => {
+
+  submitPortal: async (draft_id: string, consent_token: string, portal_type: string, target_authority: string, redacted_content: string): Promise<PortalFilingResult> => {
     const res = await client.post('/api/portal/submit', {
-      draft_id: draftId,
-      consent_token: consentToken,
-      portal_type: portalType,
-      target_authority: targetAuthority,
-      redacted_content: redactedContent,
+      draft_id,
+      consent_token,
+      portal_type,
+      target_authority,
+      redacted_content,
     });
     return res.data;
   },
 
-  getQAAudit: async (): Promise<QAAuditReport> => {
-    const res = await client.get('/api/qa/audit');
-    return res.data;
-  },
-
-  getSupervisorLogs: async (): Promise<SupervisorSummary> => {
-    const res = await client.get('/api/agents/supervisor/logs');
-    return res.data;
-  },
-
-  loginSupervisor: async (username: string, password: string) => {
-    const res = await client.post('/api/auth/login', {
-      username,
-      password
+  submitGrievance: async (data: { citizen_id: string; language: string; raw_text: string; location_details?: string }) => {
+    const res = await fetch(`${API_BASE_URL}/api/grievance/process`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
-    return res.data;
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return res.json();
   },
 
-  authDigiLocker: async (citizenName: string, aadhaarLast4: string) => {
-    const res = await client.post('/api/digilocker/auth', {
-      citizen_name: citizenName,
-      aadhaar_last4: aadhaarLast4
+  async loginSupervisor(username: string, password: string) {
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
     });
-    return res.data;
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return res.json();
   },
 
+  async getSupervisorLogs() {
+    const res = await fetch(`${API_BASE_URL}/api/agents/supervisor/logs`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return res.json();
+  },
 
-  pushToDigiLocker: async (digilockerToken: string, filingId: string, documentTitle: string, receiptHash: string) => {
-    const res = await client.post('/api/digilocker/push_receipt', {
-      digilocker_token: digilockerToken,
-      filing_id: filingId,
-      document_title: documentTitle,
-      receipt_hash: receiptHash
+  async getQAAudit() {
+    const res = await fetch(`${API_BASE_URL}/api/qa/audit_system`, { method: 'POST' });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return res.json();
+  },
+
+  // --- AdhiKaar Integrated Feature API Methods ---
+
+
+
+  async convertIPCBNS(query: string) {
+    const res = await fetch(`${API_BASE_URL}/api/ipc-bns/convert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
     });
-    return res.data;
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return res.json();
+  },
+
+  async analyzeLawSteps(situation: string, language: string = 'English') {
+    const res = await fetch(`${API_BASE_URL}/api/lawsteps/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ situation, language }),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return res.json();
+  },
+
+  async fetchLegalAidHelplines() {
+    const res = await fetch(`${API_BASE_URL}/api/dlsa/helplines`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return res.json();
   },
 
   getHistory: async () => {
@@ -108,4 +129,3 @@ export const api = {
     return res.data;
   }
 };
-

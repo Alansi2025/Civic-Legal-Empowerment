@@ -163,6 +163,47 @@ def verify_digilocker_identity(req: DigiLockerAuthRequest):
     return digilocker_service.verify_citizen_aadhaar(req.citizen_name, req.aadhaar_last4)
 
 
+# --- AdhiKaar Integrated Endpoints ---
+from app.models import IPCBNSLookupRequest, LawStepsRequest
+from app.services.adhikaar_service import ipc_bns_service, lawsteps_service, legal_aid_service
+
+@app.post("/api/ipc-bns/convert", tags=["AdhiKaar IPC ↔ BNS Converter"])
+async def convert_ipc_bns(req: IPCBNSLookupRequest):
+    """
+    Looks up Indian Penal Code (IPC) section and maps it to new Bharatiya Nyaya Sanhita (BNS 2023) section,
+    including title comparison, description, punishment changes, and bailability details.
+    """
+    results = ipc_bns_service.lookup(req.query)
+    return {
+        "query": req.query,
+        "total_matches": len(results),
+        "results": [r.dict() for r in results]
+    }
+
+
+@app.post("/api/lawsteps/analyze", tags=["AdhiKaar LawSteps 6-Panel RAG Pipeline"])
+async def analyze_lawsteps(req: LawStepsRequest):
+    """
+    Executes the 6-Panel LawSteps Verified Legal Analysis Pipeline (Situation & Law, Applicable Provisions,
+    Rights, Procedural Next Steps, Stress Test Arguments, and Plain Read-Aloud Summary).
+    """
+    result = lawsteps_service.analyze_situation(req.situation, req.language)
+    return result.dict()
+
+
+@app.get("/api/dlsa/helplines", tags=["AdhiKaar Legal Aid Directory"])
+async def get_legal_aid_helplines():
+    """
+    Returns verified free national legal aid helplines (NALSA 15100, Tele-Law 14454, Women Helpline 181, Cyber Crime 1930).
+    """
+    helplines = legal_aid_service.get_helplines()
+    return {
+        "total_helplines": len(helplines),
+        "helplines": [h.dict() for h in helplines]
+    }
+
+
+
 @app.post("/api/digilocker/push_receipt")
 def push_to_digilocker(req: DigiLockerPushRequest):
     """Push statutory petition PDF & filing receipt to citizen DigiLocker storage account."""

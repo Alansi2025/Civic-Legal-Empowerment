@@ -68,6 +68,50 @@ class StatutoryDraft(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
+# --- AdhiKaar Integrated Models ---
+class IPCBNSLookupRequest(BaseModel):
+    query: str = Field(..., description="IPC section number (e.g. '302', '420', '498A') or offence title/keyword")
+
+
+class IPCBNSSectionMap(BaseModel):
+    ipc_section: str
+    bns_section: str
+    offence: str
+    ipc_title: str
+    bns_title: str
+    description: str
+    punishment: str
+    key_changes: str
+    category: str
+
+
+class LawStepsRequest(BaseModel):
+    situation: str = Field(..., description="Citizen grievance situation description")
+    language: str = Field(default="English", description="Target language (English, Hindi, Tamil, Telugu, etc.)")
+
+
+class LawStepsResult(BaseModel):
+    situation_and_law: str
+    applicable_law: List[str]
+    rights: List[Dict[str, str]]
+    next_steps: List[str]
+    stress_test: Dict[str, List[str]]
+    explain_simply: str
+    verification: List[Dict[str, Any]]
+    sources: List[Dict[str, str]]
+
+
+class LegalAidHelpline(BaseModel):
+    name: str
+    name_hi: Optional[str] = None
+    number: str
+    description: str
+    description_hi: Optional[str] = None
+    hours: str
+    toll_free: bool
+
+
+
 
 class PIIDetectionItem(BaseModel):
     entity_type: PIIEntityType

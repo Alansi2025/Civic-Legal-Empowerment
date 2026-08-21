@@ -36,8 +36,18 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
   const [audioTranscribing, setAudioTranscribing] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
 
+  // AdhiKaar Integrated Feature States
+  const [showIpcModal, setShowIpcModal] = useState(false);
+  const [ipcSearchQuery, setIpcSearchQuery] = useState('');
+  const [ipcResults, setIpcResults] = useState<any[]>([]);
+  const [ipcLoading, setIpcLoading] = useState(false);
+
+  const [showHelplinesModal, setShowHelplinesModal] = useState(false);
+  const [helplinesList, setHelplinesList] = useState<any[]>([]);
+
   // Web MediaRecorder Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
   const audioChunksRef = useRef<Blob[]>([]);
 
   // Dynamic state for task workflow
@@ -367,6 +377,65 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
       setLoading(false);
     }
   };
+
+  // --- AdhiKaar Action Handlers ---
+  const handleSearchIPCBNS = async (q?: string) => {
+    const query = q || ipcSearchQuery;
+    if (!query.trim()) return;
+    setIpcLoading(true);
+    try {
+      const data = await api.convertIPCBNS(query);
+      setIpcResults(data.results || []);
+      setShowIpcModal(true);
+    } catch (e: any) {
+      alert("Error searching IPC-BNS converter: " + e);
+    } finally {
+      setIpcLoading(false);
+    }
+  };
+
+  const handleOpenHelplinesModal = async () => {
+    try {
+      const data = await api.fetchLegalAidHelplines();
+      setHelplinesList(data.helplines || []);
+      setShowHelplinesModal(true);
+    } catch (e: any) {
+      alert("Error fetching legal aid helplines: " + e);
+    }
+  };
+
+  const handleExecuteLawSteps = async (situationText: string) => {
+    setLoading(true);
+    try {
+      const lawstepsRes = await api.analyzeLawSteps(situationText, 'English');
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `user_${Date.now()}`,
+          sender: 'user',
+          text: `Analyze this legal situation using AdhiKaar LawSteps 6-Panel Framework: "${situationText}"`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        },
+        {
+          id: `bot_lawsteps_${Date.now()}`,
+          sender: 'bot',
+          type: 'text',
+          text: `🛡️ **AdhiKaar Verified LawSteps 6-Panel Analysis**\n\n` +
+                `**1. Situation & Statutory Law:**\n${lawstepsRes.situation_and_law}\n\n` +
+                `**2. Applicable BNS 2023 Provisions:**\n${lawstepsRes.applicable_law.map((l: string) => `• ${l}`).join('\n')}\n\n` +
+                `**3. Constitutional & Statutory Rights:**\n${lawstepsRes.rights.map((r: any) => `• **${r.text}** (${r.source})`).join('\n')}\n\n` +
+                `**4. Procedural Next Steps:**\n${lawstepsRes.next_steps.join('\n')}\n\n` +
+                `**5. Plain Read-Aloud Summary:**\n"${lawstepsRes.explain_simply}"`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    } catch (e: any) {
+      alert("Error running LawSteps analysis: " + e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   return (
     <div className="flex-1 bg-[#131314] text-slate-100 flex flex-col h-screen overflow-hidden relative font-sans">
@@ -733,18 +802,128 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
                 )}
               </div>
             ))}
-
-            {loading && (
-              <div className="flex items-center gap-3 text-xs text-slate-400 bg-[#1E1F20] px-4 py-3 rounded-2xl w-fit border border-[#2A2B2D] animate-pulse">
-                <Sparkles className="w-4 h-4 text-blue-400 animate-spin" />
-                Gemini evaluating legal framework & generating response...
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
+
+      {/* --- AdhiKaar Quick Tool Buttons Bar --- */}
+      <div className="w-full max-w-3xl mx-auto px-4 pb-2 flex items-center justify-center gap-2 flex-wrap text-xs">
+        <button
+          onClick={() => handleSearchIPCBNS('302')}
+          className="px-3 py-1.5 rounded-full bg-[#1E1F20] hover:bg-[#28292A] border border-[#2A2B2D] text-slate-300 hover:text-white flex items-center gap-1.5 transition-all shadow"
+        >
+          <Scale className="w-3.5 h-3.5 text-amber-400" />
+          <span>IPC ↔ BNS Code Converter</span>
+        </button>
+
+        <button
+          onClick={() => handleExecuteLawSteps("My neighbor encroached on public land.")}
+          className="px-3 py-1.5 rounded-full bg-[#1E1F20] hover:bg-[#28292A] border border-[#2A2B2D] text-slate-300 hover:text-white flex items-center gap-1.5 transition-all shadow"
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <span>LawSteps 6-Panel Analysis</span>
+        </button>
+
+        <button
+          onClick={handleOpenHelplinesModal}
+          className="px-3 py-1.5 rounded-full bg-[#1E1F20] hover:bg-[#28292A] border border-[#2A2B2D] text-slate-300 hover:text-white flex items-center gap-1.5 transition-all shadow"
+        >
+          <Globe className="w-3.5 h-3.5 text-blue-400" />
+          <span>Free Legal Aid Helplines (15100)</span>
+        </button>
+      </div>
+
+      {/* --- AdhiKaar IPC ↔ BNS Converter Modal --- */}
+      {showIpcModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#1E1F20] border border-[#2A2B2D] rounded-2xl max-w-2xl w-full p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#2A2B2D] pb-3">
+              <div className="flex items-center gap-2">
+                <Scale className="w-5 h-5 text-amber-400" />
+                <h3 className="text-lg font-bold text-white">AdhiKaar IPC ↔ BNS Legal Code Converter</h3>
+              </div>
+              <button onClick={() => setShowIpcModal(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={ipcSearchQuery}
+                onChange={(e) => setIpcSearchQuery(e.target.value)}
+                placeholder="Enter IPC section (e.g. 302, 420, 376, 498A) or offence title..."
+                className="flex-1 bg-[#131314] border border-[#2A2B2D] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+              />
+              <button
+                onClick={() => handleSearchIPCBNS()}
+                disabled={ipcLoading}
+                className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition-all shadow"
+              >
+                {ipcLoading ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
+              {ipcResults.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">Enter an IPC section number above to map it to the new Bharatiya Nyaya Sanhita (BNS 2023).</p>
+              ) : (
+                ipcResults.map((item, idx) => (
+                  <div key={idx} className="bg-[#131314] p-4 rounded-xl border border-[#2A2B2D] space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-amber-400 text-sm">IPC Section {item.ipc_section} ➔ BNS Section {item.bns_section}</span>
+                      <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px]">{item.category}</span>
+                    </div>
+                    <h4 className="text-white font-semibold">{item.offence}</h4>
+                    <p className="text-slate-300">{item.description}</p>
+                    <div className="pt-1 text-[11px] text-emerald-400 font-mono">
+                      <strong>Punishment:</strong> {item.punishment}
+                    </div>
+                    <div className="text-[11px] text-slate-400 bg-slate-900/60 p-2 rounded border border-slate-800">
+                      <strong>Key Changes in BNS 2023:</strong> {item.key_changes}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- AdhiKaar Legal Aid Helplines Modal --- */}
+      {showHelplinesModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#1E1F20] border border-[#2A2B2D] rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#2A2B2D] pb-3">
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-blue-400" />
+                <h3 className="text-lg font-bold text-white">AdhiKaar Free Legal Aid Directory</h3>
+              </div>
+              <button onClick={() => setShowHelplinesModal(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
+              {helplinesList.map((h, idx) => (
+                <div key={idx} className="bg-[#131314] p-4 rounded-xl border border-[#2A2B2D] flex items-center justify-between text-xs">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-white font-bold text-sm">{h.name}</h4>
+                      {h.name_hi && <span className="text-slate-400 text-xs">({h.name_hi})</span>}
+                    </div>
+                    <p className="text-slate-300">{h.description}</p>
+                    <span className="text-[10px] text-slate-500">{h.hours} • Toll-Free</span>
+                  </div>
+                  <a
+                    href={`tel:${h.number}`}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow"
+                  >
+                    📞 {h.number}
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Floating Bottom Prompt Capsule (When Messages Exist) */}
       {messages.length > 0 && (
