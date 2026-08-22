@@ -355,8 +355,9 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
         citizen_id: `citizen_${Math.random().toString(36).substring(7)}`,
         language: 'English',
         raw_text: textToSend,
-        location_details: 'Ward 42, Municipal Jurisdiction'
+        location_details: undefined
       };
+
       setActiveIntake(intake);
 
       // Step 1: Execute Legal Triage & Conversational NLM Agent

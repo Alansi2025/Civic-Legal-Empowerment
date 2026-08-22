@@ -29,8 +29,12 @@ class TriageAgent(BaseAgent):
         text_clean = intake.raw_text.strip().lower()
 
         # Conversational check for casual greetings/questions
-        greetings = ["hi", "hello", "hey", "good morning", "good evening", "namaste", "who are you", "what can you do", "help", "hi what is day"]
-        if text_clean in greetings or len(text_clean) < 4 and not any(w in text_clean for w in ["rti", "pwd", "tax"]):
+        greetings_meta = [
+            "hi", "hello", "hey", "good morning", "good evening", "namaste",
+            "who are you", "who are you?", "tell me about yourself", "what can you do", "what can you do?",
+            "help", "hi what is day", "what is this", "what is this?"
+        ]
+        if text_clean in greetings_meta or (len(text_clean) < 6 and not any(w in text_clean for w in ["rti", "pwd", "tax", "fir", "bns", "rent"])):
             return TriageResult(
                 pathway=StatutoryPathway.UNKNOWN,
                 public_authority="Legal Adviser AI",
@@ -41,6 +45,7 @@ class TriageAgent(BaseAgent):
                 conversational_reply=nlm_res.get("conversational_reply"),
                 nlm_info=nlm_res.get("nlm_info")
             )
+
 
 
         prompt = (
