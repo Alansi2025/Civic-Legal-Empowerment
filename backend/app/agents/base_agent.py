@@ -7,11 +7,14 @@ from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential
 from app.config import settings
 
-
 logger = logging.getLogger("BaseAgent")
 
 
 class BaseAgent:
+    """
+    Base Agent utilizing Google GenAI SDK (client.interactions.create & client.models.generate_content)
+    grounded with Google Search tools and structured system instructions.
+    """
     def __init__(self, name: str, role_prompt: str, model_name: Optional[str] = None):
         self.name = name
         self.role_prompt = role_prompt
@@ -27,11 +30,31 @@ class BaseAgent:
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     def call_llm_with_retry(self, prompt: str, system_instruction: Optional[str] = None) -> str:
-        """Call Gemini LLM with exponential backoff retries."""
+        """Call Gemini LLM via client.interactions.create with exponential backoff retries."""
         if not self.client:
             raise ValueError("No GenAI client available")
 
         sys_inst = system_instruction or self.role_prompt
+
+        # Attempt Interactions API with Grounding Tools & System Instructions
+        try:
+            interaction = self.client.interactions.create(
+                model=self.model_name,
+                input=prompt,
+                system_instruction=sys_inst,
+                tools=[{'type': 'google_search'}],
+                generation_config={
+                    'temperature': 0.7,
+                    'max_output_tokens': 65536,
+                    'top_p': 0.9,
+                }
+            )
+            if interaction and getattr(interaction, 'output_text', None):
+                return interaction.output_text
+        except Exception as err:
+            logger.info(f"Interactions API call note in {self.name}: {err}. Trying models.generate_content...")
+
+        # Fallback to models.generate_content
         config = types.GenerateContentConfig(
             system_instruction=sys_inst,
             temperature=0.2,
@@ -73,8 +96,7 @@ class BaseAgent:
     def fallback_response(self, prompt: str) -> str:
         """Rule-based intelligent response when API rate limits are hit."""
         return (
-            "Hello! I am your Gemini Civic & Legal AI Assistant. "
-            "I am ready to help you file RTI applications, municipal road complaints (MCD/BBMP/BMC), "
-            "or CPGRAMS public grievances. Please share the details of your issue."
+            "Hello! I am your Legal Adviser AI Assistant. "
+            "I am here to listen to your civic or legal grievance, answer your questions in plain language, "
+            "and guide you step-by-step on how to protect yourself and file your grievance on official portals."
         )
-
