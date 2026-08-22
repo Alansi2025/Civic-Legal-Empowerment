@@ -7,8 +7,9 @@ import {
 import {
   Plus, Send, Mic, Sparkles, FileText, ShieldCheck, Download,
   CheckCircle2, Scale, ArrowRight, Lock, Globe, Eye, EyeOff, CornerDownRight, ChevronDown, Volume2, Square,
-  Camera, Image as ImageIcon, Video, Music, Paperclip, X
+  Camera, Image as ImageIcon, Video, Music, Paperclip, X, AlertTriangle, Compass, Megaphone, ShoppingBag
 } from 'lucide-react';
+
 
 import confetti from 'canvas-confetti';
 
@@ -801,19 +802,104 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
               </div>
             )}
 
-            {/* Curved Arrow Prompt Suggestions */}
-            <div className="w-full max-w-lg space-y-2.5 text-left pt-2">
-              {suggestions.map((item, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSendPrompt(item.prompt)}
-                  className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-[#1E1F20] text-slate-300 hover:text-white text-xs flex items-center gap-3 transition-all border border-transparent hover:border-[#2A2B2D]"
-                >
-                  <CornerDownRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                  <span>{item.label}</span>
-                </button>
-              ))}
+            {/* Google AI Studio Style Interactive Flash Cards Suggestions Grid */}
+            <div className="w-full max-w-3xl pt-2 space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-bold text-slate-400 font-mono tracking-wider flex items-center gap-1.5 uppercase">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                  Explore Legal Adviser AI Tasks
+                </span>
+                <span className="text-[10px] text-slate-500">Click a card to start</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 text-left">
+                {[
+                  {
+                    id: 'road_damage',
+                    title: 'Road Damage & Potholes',
+                    subtitle: 'File road repair petitions for MCD / PWD / BBMP with geotagged photo proof.',
+                    prompt: 'File a road damage and pothole complaint for Delhi MCD Ward 42 on cmjansunwai.delhi.gov.in with geotagged photo.',
+                    icon: AlertTriangle,
+                    badge: 'Civic Safety',
+                    color: 'from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-400'
+                  },
+                  {
+                    id: 'highway_hazard',
+                    title: 'NHAI Highway Hazard (1033)',
+                    subtitle: 'Report dangerous National Highway potholes & toll plaza grievances.',
+                    prompt: 'File a National Highway hazard complaint to NHAI 1033 and CPGRAMS pgportal.gov.in for NH-48 potholes.',
+                    icon: Compass,
+                    badge: 'Highways',
+                    color: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30 text-blue-400'
+                  },
+                  {
+                    id: 'rti_inspection',
+                    title: 'RTI Budget & Tender Audit',
+                    subtitle: 'Inspect public road work expenditure, budgets & certified contractor bills under RTI Act.',
+                    prompt: 'File an RTI application to inspect public road works expenditure and certified tender copies in Ward 42.',
+                    icon: FileText,
+                    badge: 'RTI Act 2005',
+                    color: 'from-indigo-500/20 to-purple-500/10 border-indigo-500/30 text-indigo-400'
+                  },
+                  {
+                    id: 'cpgrams_pension',
+                    title: 'CPGRAMS Public Grievance',
+                    subtitle: 'Submit grievance petitions for delayed central pension, Provident Fund, or welfare schemes.',
+                    prompt: 'File a CPGRAMS public grievance petition for central pension payment delayed for over 8 months.',
+                    icon: Megaphone,
+                    badge: 'CPGRAMS',
+                    color: 'from-purple-500/20 to-pink-500/10 border-purple-500/30 text-purple-400'
+                  },
+                  {
+                    id: 'consumer_dispute',
+                    title: 'Consumer Fraud & Refund',
+                    subtitle: 'File claims for defective products, merchant refusal of refund, or unfair trade practices.',
+                    prompt: 'File a Consumer Complaint for a defective television delivered broken where vendor refuses refund.',
+                    icon: ShoppingBag,
+                    badge: 'Consumer Act',
+                    color: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30 text-emerald-400'
+                  },
+                  {
+                    id: 'ipc_bns_rights',
+                    title: 'BNS 2023 Code Converter',
+                    subtitle: 'Convert IPC sections to new Bharatiya Nyaya Sanhita (BNS 2023) & get step-by-step legal aid.',
+                    prompt: 'Look up BNS 2023 sections and rights for public nuisance and negligence by local authority.',
+                    icon: Scale,
+                    badge: 'BNS 2023',
+                    color: 'from-rose-500/20 to-red-500/10 border-rose-500/30 text-rose-400'
+                  }
+                ].map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => handleSendPrompt(card.prompt)}
+                      className="group bg-[#1E1F20] hover:bg-[#28292A] border border-[#2A2B2D] hover:border-slate-500 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-lg hover:shadow-2xl hover:-translate-y-0.5 text-left space-y-3 cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className={`p-2.5 rounded-xl bg-gradient-to-br ${card.color} border shadow-inner`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#131314] text-slate-400 border border-[#2A2B2D] group-hover:border-slate-500 transition-all">
+                          {card.badge}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <h3 className="text-xs font-bold text-white group-hover:text-blue-300 transition-all">
+                          {card.title}
+                        </h3>
+                        <p className="text-[11px] text-slate-400 group-hover:text-slate-300 leading-relaxed line-clamp-2">
+                          {card.subtitle}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
           </div>
         ) : (
           /* Active Chat Conversation Feed with Full Vertical Scrollability */
