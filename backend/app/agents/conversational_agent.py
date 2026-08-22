@@ -9,38 +9,50 @@ logger = logging.getLogger("ConversationalNLMAgent")
 
 class ConversationalNLMAgent(BaseAgent):
     """
-    Hybrid Friendly Conversational AI & Natural Language Model (NLM) Feature Extractor.
-    Handles general friendly conversation while simultaneously extracting structured,
-    actionable facts & entities from any input for downstream legal processing.
+    Hybrid Friendly Conversational Legal Adviser AI & NLM Feature Extractor.
+    Gathers citizen grievances, performs multimodal photo/video/doc evidence analysis,
+    provides legal aid (rights, laws, helplines), and tells the user step-by-step
+    'what to do' and 'how to do things' before drafting statutory petitions.
     """
     def __init__(self):
         role_prompt = (
-            "You are the Gemini Conversational & NLM Information Extraction Agent. "
-            "You have two core functions:\n"
-            "1. Friendly Conversation: Warmly chat with citizens, answer general questions, explain rights, and offer friendly assistance.\n"
-            "2. NLM Information Extraction: Analyze any user input (casual or legal) and extract key entities, user intent, "
-            "actionable summary, suggested next steps, and sentiment urgency into structured JSON."
+            "You are Legal Adviser AI, a expert Indian Legal & Civic Empowerment Assistant.\n"
+            "Your duties:\n"
+            "1. Hear Citizen Grievance & Media Evidence: Listen carefully to user grievances, including photos, videos, audio, and documents.\n"
+            "2. Provide Comprehensive Legal Aid: Explain applicable laws (BNS 2023, RTI Act 2005, Consumer Protection Act 2019, State Municipalities Acts) and Constitutional rights (Article 21).\n"
+            "3. Tell the User 'What to Do' & 'How to Do Things': Provide clear, numbered step-by-step instructions:\n"
+            "   - Step 1: Immediate Action & Helplines (e.g. NALSA 15100, Cyber Crime 1930, Women Helpline 181, Police 112).\n"
+            "   - Step 2: Official Government Portal Filing (e.g. pgportal.gov.in, cmjansunwai.delhi.gov.in, consumerhelpline.gov.in, gmdaharyana.gov.in).\n"
+            "   - Step 3: Statutory Draft & Evidence Submission (Instruct user to click 'Draft Statutory Legal Petition').\n"
+            "4. Ask Clarifying Questions: Ask friendly follow-up questions if location, dates, or department details are missing.\n"
+            "5. Extract NLM Info: Output valid JSON containing conversational_reply and nlm_info."
         )
-        super().__init__(name="Conversational & NLM Information Extractor Agent", role_prompt=role_prompt)
+        super().__init__(name="Legal Adviser AI & NLM Information Extractor Agent", role_prompt=role_prompt)
 
     def process(self, intake: GrievanceInput) -> Dict[str, Any]:
         """
-        Processes user input, generating a friendly conversational reply AND an NLM structured extraction payload.
+        Processes user input & media attachments, providing step-by-step legal guidance.
         """
+        has_attachments = "Attached Evidence" in intake.raw_text or "Attached" in intake.raw_text
+
         prompt = (
-            f"User Input Text:\n\"{intake.raw_text}\"\n\n"
+            f"Citizen Input Text:\n\"{intake.raw_text}\"\n\n"
             f"Input Language: {intake.language}\n"
-            f"Location Context: {intake.location_details or 'None provided'}\n\n"
+            f"Location Details: {intake.location_details or 'Not specified'}\n"
+            f"Media Attachments Included: {'Yes (Photo/Video/Audio/Doc)' if has_attachments else 'None'}\n\n"
             "Instructions:\n"
-            "1. Generate a warm, natural, friendly conversational response answering the user's message directly.\n"
-            "2. Perform NLM structural analysis to extract actionable information.\n\n"
-            "Return JSON matching exact format:\n"
+            "1. Generate a thorough, warm, and highly structured 'conversational_reply' that includes:\n"
+            "   - Empathetic acknowledgment of the citizen's grievance & media evidence attached.\n"
+            "   - ⚖️ Applicable Statutory Laws & Constitutional Rights (cite BNS 2023, RTI Act 2005, Consumer Act, Municipal Acts).\n"
+            "   - 🎯 WHAT TO DO & HOW TO DO THINGS (Step-by-step action guide: Official portals, emergency/legal aid helplines like 15100, and petition drafting).\n"
+            "   - ❓ Friendly follow-up questions if location, dates, or incident details are incomplete.\n"
+            "2. Perform NLM structural analysis matching exact JSON format:\n"
             "{\n"
-            "  \"conversational_reply\": \"<friendly response text>\",\n"
-            "  \"user_intent\": \"<intent summary, e.g., General Greeting / Report Pothole / RTI Query / Pension Delay>\",\n"
-            "  \"key_entities\": {\"location\": \"...\", \"department\": \"...\", \"category\": \"...\", \"dates\": \"...\"},\n"
-            "  \"actionable_summary\": \"<1 sentence normalized summary>\",\n"
-            "  \"suggested_next_actions\": [\"<action 1>\", \"<action 2>\"],\n"
+            "  \"conversational_reply\": \"<detailed step-by-step legal guidance & response text>\",\n"
+            "  \"user_intent\": \"<intent summary>\",\n"
+            "  \"key_entities\": {\"location\": \"...\", \"department\": \"...\", \"category\": \"...\", \"evidence_attached\": \"...\"},\n"
+            "  \"actionable_summary\": \"<1 sentence summary>\",\n"
+            "  \"suggested_next_actions\": [\"Step 1: ...\", \"Step 2: ...\", \"Step 3: ...\"],\n"
             "  \"is_grievance_ready\": true/false,\n"
             "  \"sentiment_urgency\": \"Low / Normal / High / Emergency\"\n"
             "}"
@@ -51,7 +63,7 @@ class ConversationalNLMAgent(BaseAgent):
         return parsed
 
     def _parse_nlm_response(self, raw_res: str, original_text: str) -> Dict[str, Any]:
-        """Parse JSON response with rule-based fallback."""
+        """Parse JSON response with rule-based legal aid fallback."""
         try:
             cleaned = raw_res.strip()
             if "```json" in cleaned:
@@ -61,30 +73,51 @@ class ConversationalNLMAgent(BaseAgent):
             
             data = json.loads(cleaned)
             nlm_info = NLMExtractedInfo(
-                user_intent=data.get("user_intent", "General Inquiry"),
+                user_intent=data.get("user_intent", "Legal & Civic Grievance"),
                 key_entities=data.get("key_entities", {}),
                 actionable_summary=data.get("actionable_summary", original_text),
-                suggested_next_actions=data.get("suggested_next_actions", []),
-                is_grievance_ready=data.get("is_grievance_ready", False),
+                suggested_next_actions=data.get("suggested_next_actions", [
+                    "Step 1: Contact Free Legal Aid Helpline (15100 NALSA)",
+                    "Step 2: Submit complaint on official government portal",
+                    "Step 3: Click 'Draft Statutory Legal Petition' to generate formal legal document"
+                ]),
+                is_grievance_ready=data.get("is_grievance_ready", True),
                 sentiment_urgency=data.get("sentiment_urgency", "Normal")
             )
             return {
-                "conversational_reply": data.get("conversational_reply", "Hello! How can I assist you with your civic rights or legal complaints today?"),
+                "conversational_reply": data.get("conversational_reply", "Hello! I am your Legal Adviser AI. I have analyzed your grievance. Here is what to do and how to proceed step-by-step."),
                 "nlm_info": nlm_info
             }
         except Exception as e:
             logger.warning(f"NLM parsing fallback triggered: {e}")
-            # Heuristic NLM extraction
             lower_text = original_text.lower()
-            is_grievance = any(w in lower_text for w in ["rti", "pothole", "road", "pension", "police", "refund", "tax", "mcd", "bbmp", "nhai"])
+            is_grievance = any(w in lower_text for w in ["rti", "pothole", "road", "pension", "police", "refund", "tax", "mcd", "bbmp", "nhai", "attached", "photo", "video", "doc"])
+            
+            reply_text = (
+                f"🛡️ **Legal Adviser AI Analysis & Guidance**\n\n"
+                f"I have received and evaluated your grievance: *\"{original_text[:150]}\"*\n\n"
+                f"⚖️ **Applicable Laws & Rights:**\n"
+                f"• Article 21 (Right to Safe Infrastructure & Life)\n"
+                f"• State Municipalities Act & RTI Act 2005 / BNS 2023\n\n"
+                f"🎯 **WHAT TO DO & HOW TO DO THINGS:**\n"
+                f"1. **Document Evidence**: Ensure any photos, videos, or documents are uploaded using the '+' button.\n"
+                f"2. **Official Portal**: Submit on the official portal (e.g. pgportal.gov.in or State Jan Sunwai portal).\n"
+                f"3. **Free Legal Aid**: Call NALSA Helpline **15100** or Tele-Law **14454** for free advocate assistance.\n"
+                f"4. **Draft Statutory Petition**: Click **'Draft Statutory Legal Petition'** below to auto-generate your formal petition."
+            )
             return {
-                "conversational_reply": f"Hello! I'm your Gemini AI assistant. I parsed your input: '{original_text}'. How can I help you resolve this?",
+                "conversational_reply": reply_text,
                 "nlm_info": NLMExtractedInfo(
-                    user_intent="Statutory Grievance" if is_grievance else "General Conversation",
+                    user_intent="Statutory Grievance & Legal Guidance" if is_grievance else "General Conversation",
                     key_entities={"raw_input": original_text},
                     actionable_summary=original_text,
-                    suggested_next_actions=["File Statutory Legal Petition", "Explore Civic Pathways"] if is_grievance else ["Ask a question", "File a grievance"],
+                    suggested_next_actions=[
+                        "Step 1: Attach photo/video evidence via '+' button",
+                        "Step 2: Review statutory legal advice",
+                        "Step 3: Click 'Draft Statutory Legal Petition'"
+                    ],
                     is_grievance_ready=is_grievance,
                     sentiment_urgency="High" if is_grievance else "Normal"
                 )
             }
+

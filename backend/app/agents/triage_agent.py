@@ -33,7 +33,7 @@ class TriageAgent(BaseAgent):
         if text_clean in greetings or len(text_clean) < 4 and not any(w in text_clean for w in ["rti", "pwd", "tax"]):
             return TriageResult(
                 pathway=StatutoryPathway.UNKNOWN,
-                public_authority="Civic Assistant AI",
+                public_authority="Legal Adviser AI",
                 statutory_sections=[],
                 confidence_score=1.0,
                 summary=intake.raw_text,
@@ -41,6 +41,7 @@ class TriageAgent(BaseAgent):
                 conversational_reply=nlm_res.get("conversational_reply"),
                 nlm_info=nlm_res.get("nlm_info")
             )
+
 
         prompt = (
             f"Citizen Grievance Text:\n\"{intake.raw_text}\"\n\n"
