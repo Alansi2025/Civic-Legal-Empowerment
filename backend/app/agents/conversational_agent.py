@@ -109,9 +109,10 @@ class ConversationalNLMAgent(BaseAgent):
             reply = data.get("conversational_reply", "")
             
             # Ensure mandatory short disclaimer is present
-            disclaimer = "\n\n*This guidance is for informational purposes and does not constitute formal legal counsel.*"
-            if "formal legal counsel" not in reply:
+            disclaimer = "\n\n*Note: This is civic procedural guidance, not formal legal representation.*"
+            if "formal legal representation" not in reply:
                 reply += disclaimer
+
 
             nlm_info = NLMExtractedInfo(
                 user_intent=data.get("user_intent", "Civic Grievance & Guidance"),

@@ -383,10 +383,11 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
           id: `bot_triage_${Date.now()}`,
           sender: 'bot',
           type: 'triage_card',
-          text: `I have evaluated your request and categorized it under the statutory legal framework.`,
+          text: triageRes.conversational_reply || triageRes.summary || "Here is plain-language legal and civic guidance for your issue:",
           data: triageRes,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
+
         setMessages(prev => {
           const updated = [...prev, botMsg];
           // Persist session to MongoDB
