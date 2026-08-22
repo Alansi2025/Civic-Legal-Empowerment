@@ -124,65 +124,31 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
         </button>
       </div>
 
-      {/* Navigation List */}
+      {/* Navigation & Saved Recents List */}
       <div className="flex-1 overflow-y-auto px-3 space-y-1 text-xs">
-        <button
-          onClick={() => onSelectPreset('File a road damage and pothole complaint for Delhi MCD Ward 42 on cmjansunwai.delhi.gov.in with geotagged location.')}
-          className="w-full py-2 px-3 rounded-lg hover:bg-[#28292A] text-slate-300 hover:text-white flex items-center gap-3 transition-all text-left"
-        >
-          <AlertTriangle className="w-4 h-4 text-amber-400" />
-          Delhi MCD / PWD Road Repair
-        </button>
-
-        <button
-          onClick={() => onSelectPreset('File a National Highway hazard complaint to NHAI 1033 and CPGRAMS pgportal.gov.in for NH-48 potholes.')}
-          className="w-full py-2 px-3 rounded-lg hover:bg-[#28292A] text-slate-300 hover:text-white flex items-center gap-3 transition-all text-left"
-        >
-          <Compass className="w-4 h-4 text-blue-400" />
-          NHAI Highway Hazard (1033)
-        </button>
-
-        <button
-          onClick={() => onSelectPreset('File an RTI application to inspect public road works expenditure and certified tender copies in Ward 42.')}
-          className="w-full py-2 px-3 rounded-lg hover:bg-[#28292A] text-slate-300 hover:text-white flex items-center gap-3 transition-all text-left"
-        >
-          <FileText className="w-4 h-4 text-indigo-400" />
-          RTI Act Applications
-        </button>
-
-        <button
-          onClick={() => onSelectPreset('File a CPGRAMS public grievance petition for central pension payment delayed for over 8 months.')}
-          className="w-full py-2 px-3 rounded-lg hover:bg-[#28292A] text-slate-300 hover:text-white flex items-center gap-3 transition-all text-left"
-        >
-          <Megaphone className="w-4 h-4 text-purple-400" />
-          CPGRAMS Grievance
-        </button>
-
-        <button
-          onClick={() => onSelectPreset('File a Consumer Complaint for a defective refrigerator purchased for Rs. 35,000 where vendor refuses refund.')}
-          className="w-full py-2 px-3 rounded-lg hover:bg-[#28292A] text-slate-300 hover:text-white flex items-center gap-3 transition-all text-left"
-        >
-          <ShoppingBag className="w-4 h-4 text-emerald-400" />
-          Consumer Protection
-        </button>
-
-        <div className="pt-4 pb-1 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-          Recents
+        <div className="pt-2 pb-1.5 px-3 text-[11px] font-bold text-slate-400 font-mono uppercase tracking-wider flex items-center justify-between">
+          <span>Recents</span>
+          <span className="text-[10px] text-slate-500 font-normal">MongoDB Saved</span>
         </div>
 
-        {threads.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onSelectThread(item)}
-            className={`w-full py-2 px-3 rounded-lg text-left truncate flex items-center gap-2.5 transition-all ${
-              activeThreadId === item.id ? 'bg-[#28292A] text-white font-medium' : 'text-slate-400 hover:text-white hover:bg-[#28292A]'
-            }`}
-          >
-            <History className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-            <span className="truncate">{item.title}</span>
-          </button>
-        ))}
+        {threads.length === 0 ? (
+          <p className="text-[11px] text-slate-500 px-3 py-2 italic">No past conversations saved yet.</p>
+        ) : (
+          threads.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onSelectThread(item)}
+              className={`w-full py-2.5 px-3 rounded-xl text-left flex items-center gap-2.5 transition-all ${
+                activeThreadId === item.id ? 'bg-[#28292A] text-white font-medium shadow' : 'text-slate-400 hover:text-white hover:bg-[#28292A]'
+              }`}
+            >
+              <History className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+              <span className="truncate text-xs font-sans">{item.title}</span>
+            </button>
+          ))
+        )}
       </div>
+
 
       {/* User Profile Bar at Bottom */}
       <div className="p-3 border-t border-[#2A2B2D] flex items-center justify-between">
