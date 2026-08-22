@@ -80,32 +80,35 @@ class ConversationalNLMAgent(BaseAgent):
 
         has_attachments = "Attached Evidence" in intake.raw_text or "Attached" in intake.raw_text
 
+        history_context = ""
+        if intake.conversation_history and len(intake.conversation_history) > 0:
+            history_context = "Previous Conversation History Context:\n" + "\n".join(
+                [f"{h.get('sender', 'User').capitalize()}: {h.get('text', '')}" for h in intake.conversation_history[-6:]]
+            ) + "\n\n"
+
         prompt = (
-            f"Citizen Input Text:\n\"{intake.raw_text}\"\n\n"
+            f"{history_context}"
+            f"Latest Citizen Input Text:\n\"{intake.raw_text}\"\n\n"
             f"Language: {intake.language}\n"
             f"Location Context: {intake.location_details or 'Not specified'}\n"
             f"Evidence Files Attached: {'Yes' if has_attachments else 'No'}\n\n"
             "Execution Instructions:\n"
-            "1. Jump directly into clear, plain-language guidance as a helpful, knowledgeable peer. Do NOT use robotic meta-openers.\n"
-            "2. Never assume missing facts (do NOT invent 'Ward 42' or specific locations unless mentioned by user).\n"
-            "3. If critical context is missing (such as city, state, or dates), include ONE concise, polite clarifying question.\n"
-            "4. Use lightweight bullet points, step-by-step actions, and clean bold text for scannability:\n"
-            "   - 🛡️ Immediate Steps & Evidence Preservation\n"
-            "   - 📞 Helplines & Free Legal Aid (e.g. NALSA 15100, Tele-Law 14454, Cyber Crime 1930)\n"
-            "   - 🌐 Official Complaint Filing (e.g. pgportal.gov.in, Consumer Helpline 1915)\n"
-            "   - ⚖️ Applicable Statutory Rights (in plain English/Hindi without legal jargon bloat)\n"
-            "5. Include a short, unobtrusive disclaimer at the bottom: \"*This guidance is for informational purposes and does not constitute formal legal counsel.*\"\n"
-            "6. Return valid JSON matching format:\n"
+            "1. Pay close attention to the Previous Conversation History Context to maintain full multi-turn continuity for follow-up questions (e.g. 'explain point by point', 'can you go in more depth', 'what about the doc').\n"
+            "2. Respond directly as a knowledgeable, helpful civic peer. Do NOT use robotic meta-openers or repeat generic questions if context is already established in past turns.\n"
+            "3. Never assume missing facts or hallucinate specific locations unless mentioned by user.\n"
+            "4. Format the response clearly with scannable bullet points and bold headers.\n"
+            "5. Return valid JSON matching format:\n"
             "{\n"
-            "  \"conversational_reply\": \"<plain-language empathetic advice with lightweight bullets & unobtrusive disclaimer>\",\n"
+            "  \"conversational_reply\": \"<plain-language empathetic advice with lightweight bullets>\",\n"
             "  \"user_intent\": \"<grievance intent>\",\n"
-            "  \"key_entities\": {\"location\": \"...\", \"category\": \"...\", \"opposing_party\": \"...\"},\n"
-            "  \"actionable_summary\": \"<1 sentence summary>\",\n"
-            "  \"suggested_next_actions\": [\"Step 1: ...\", \"Step 2: ...\"],\n"
+            "  \"key_entities\": {},\n"
+            "  \"actionable_summary\": \"<summary>\",\n"
+            "  \"suggested_next_actions\": [\"Step 1: ...\"],\n"
             "  \"is_grievance_ready\": true/false,\n"
             "  \"sentiment_urgency\": \"Normal / High / Emergency\"\n"
             "}"
         )
+
 
         raw_res = self.call_llm(prompt)
         parsed = self._parse_nlm_response(raw_res, intake.raw_text)

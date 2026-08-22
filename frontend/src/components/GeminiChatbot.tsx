@@ -351,12 +351,19 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
     setLoading(true);
 
     try {
+      const historyItems = messages.map(m => ({
+        sender: m.sender,
+        text: m.text || (m.data?.summary ? m.data.summary : '')
+      })).filter(h => h.text.trim().length > 0);
+
       const intake: GrievanceInput = {
         citizen_id: `citizen_${Math.random().toString(36).substring(7)}`,
         language: 'English',
         raw_text: textToSend,
-        location_details: undefined
+        location_details: undefined,
+        conversation_history: historyItems
       };
+
 
       setActiveIntake(intake);
 

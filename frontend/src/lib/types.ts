@@ -12,7 +12,9 @@ export interface GrievanceInput {
   language: string;
   raw_text: string;
   location_details?: string;
+  conversation_history?: Array<{ sender: string; text: string }>;
 }
+
 
 export interface NLMExtractedInfo {
   user_intent: string;

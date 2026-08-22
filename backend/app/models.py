@@ -27,6 +27,8 @@ class GrievanceInput(BaseModel):
     language: str = Field(default="English", description="Input language (e.g., English, Hindi, Tamil)")
     raw_text: str = Field(..., description="Plain-language description of civic issue or grievance")
     location_details: Optional[str] = Field(default=None, description="Ward, district, or municipality info")
+    conversation_history: List[Dict[str, str]] = Field(default_factory=list, description="Past chat turns for multi-turn context")
+
 
 
 class NLMExtractedInfo(BaseModel):
