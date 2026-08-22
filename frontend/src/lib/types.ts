@@ -3,7 +3,9 @@ export type StatutoryPathway =
   | 'CPGRAMS Public Grievance'
   | 'Consumer Protection Act 2019'
   | 'Municipal Public Works Grievance'
-  | 'General Civic Inquiry';
+  | 'General Civic Inquiry'
+  | 'Unknown';
+
 
 export interface GrievanceInput {
   citizen_id: string;

@@ -364,7 +364,9 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
       const triageRes = await api.postTriage(intake);
       setActiveTriage(triageRes);
 
-      if (triageRes.is_conversational) {
+      if (triageRes.is_conversational || triageRes.pathway === 'Unknown' || (triageRes.pathway as string) === 'UNKNOWN' || triageRes.pathway === 'General Civic Inquiry') {
+
+
         const botMsg: ChatMessage = {
           id: `bot_chat_${Date.now()}`,
           sender: 'bot',

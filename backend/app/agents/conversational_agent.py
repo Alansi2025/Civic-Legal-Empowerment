@@ -43,25 +43,41 @@ class ConversationalNLMAgent(BaseAgent):
         Processes user grievance input using the grounded conversational persona.
         """
         text_clean = intake.raw_text.strip().lower()
-        is_greeting = text_clean in ["hi", "hello", "hey", "namaste", "good morning", "good evening", "hi there", "hello there", "who are you", "what can you do", "tell me about yourself", "help"] or (len(text_clean) <= 6 and not any(w in text_clean for w in ["rti", "pwd", "tax", "fir", "bns", "road", "pothole", "rent", "landlord"]))
+        conversational_phrases = [
+
+            "who are you", "tell me about yourself", "which model", "what model", "how do you work",
+            "what can you do", "are you an ai", "who created you", "who made you", "your name",
+            "hi", "hello", "hey", "namaste", "good morning", "good evening", "help", "thanks", "thank you",
+            "what is this", "how are you", "what model are you working on", "model working on"
+        ]
+        is_greeting = any(phrase in text_clean for phrase in conversational_phrases) or (len(text_clean) <= 8 and not any(w in text_clean for w in ["rti", "pwd", "tax", "fir", "bns", "road", "pothole", "rent", "landlord"]))
 
         if is_greeting:
-            greeting_reply = (
-                "Namaste! 🙏 I am your **Legal Adviser AI**, here to help you navigate Indian laws, civic rights, and public services in simple, human language.\n\n"
-                "I can assist you with drafting RTI applications, resolving tenant & security deposit disputes, filing consumer complaints, or reporting civic grievances.\n\n"
-                "How can I help you today? Feel free to describe your issue, or click the **'+'** button to share photo, video, or document evidence."
-            )
+            if any(w in text_clean for w in ["model", "working on", "engine", "architecture"]):
+                greeting_reply = (
+                    "Namaste! 🙏 I am **Legal Adviser AI**, an authentic civic companion powered by Google's **Gemma 4** AI model architecture and **Gemini API**.\n\n"
+                    "I help citizens navigate Indian laws, RTI applications, tenant & rental disputes, consumer complaints, and public scheme entitlements in plain, human language.\n\n"
+                    "How can I assist you today? Feel free to ask a question or describe any civic issue you're facing!"
+                )
+            else:
+                greeting_reply = (
+                    "Namaste! 🙏 I am your **Legal Adviser AI**, here to help you navigate Indian laws, civic rights, and public services in simple, human language.\n\n"
+                    "I can assist you with drafting RTI applications, resolving tenant & security deposit disputes, filing consumer complaints, or reporting civic grievances.\n\n"
+                    "How can I help you today? Feel free to describe your issue, or click the **'+'** button to share photo, video, or document evidence."
+                )
+
             return {
                 "conversational_reply": greeting_reply,
                 "nlm_info": NLMExtractedInfo(
-                    user_intent="General Greeting & Capability Overview",
+                    user_intent="General Conversation & AI Identity Inquiry",
                     key_entities={},
-                    actionable_summary="User asked for introduction or greeting.",
+                    actionable_summary="User asked for introduction or model identity.",
                     suggested_next_actions=["Describe your specific issue or grievance", "Upload photo/video evidence via '+'"],
                     is_grievance_ready=False,
                     sentiment_urgency="Low"
                 )
             }
+
 
         has_attachments = "Attached Evidence" in intake.raw_text or "Attached" in intake.raw_text
 

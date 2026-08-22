@@ -28,13 +28,26 @@ class TriageAgent(BaseAgent):
 
         text_clean = intake.raw_text.strip().lower()
 
-        # Conversational check for casual greetings/questions
-        greetings_meta = [
-            "hi", "hello", "hey", "good morning", "good evening", "namaste",
-            "who are you", "who are you?", "tell me about yourself", "what can you do", "what can you do?",
-            "help", "hi what is day", "what is this", "what is this?"
+        # Grievance indicator keywords
+        grievance_keywords = [
+            "rti", "pothole", "road", "drainage", "sewage", "garbage", "street light", "water",
+            "rent", "landlord", "tenant", "deposit", "eviction", "lease",
+            "defect", "refund", "warranty", "consumer", "cheat", "fraud", "bill",
+            "pension", "passport", "police", "fir", "bns", "ipc", "complaint", "petition",
+            "mcd", "pwd", "bbmp", "nhai", "cpgrams", "encroach", "bribe"
         ]
-        if text_clean in greetings_meta or (len(text_clean) < 6 and not any(w in text_clean for w in ["rti", "pwd", "tax", "fir", "bns", "rent"])):
+        has_grievance_kw = any(kw in text_clean for kw in grievance_keywords)
+
+        # Meta questions / AI Identity / Casual conversation phrases
+        conversational_phrases = [
+            "who are you", "tell me about yourself", "which model", "what model", "how do you work",
+            "what can you do", "are you an ai", "who created you", "who made you", "your name",
+            "hi", "hello", "hey", "namaste", "good morning", "good evening", "help", "thanks", "thank you",
+            "what is this", "how are you", "what model are you working on", "model working on"
+        ]
+        is_meta_chat = any(phrase in text_clean for phrase in conversational_phrases)
+
+        if (is_meta_chat or not has_grievance_kw or len(text_clean) < 10) and not has_grievance_kw:
             return TriageResult(
                 pathway=StatutoryPathway.UNKNOWN,
                 public_authority="Legal Adviser AI",
@@ -45,6 +58,7 @@ class TriageAgent(BaseAgent):
                 conversational_reply=nlm_res.get("conversational_reply"),
                 nlm_info=nlm_res.get("nlm_info")
             )
+
 
 
 
