@@ -6,8 +6,10 @@ import {
 } from '../lib/types';
 import {
   Plus, Send, Mic, Sparkles, FileText, ShieldCheck, Download,
-  CheckCircle2, Scale, ArrowRight, Lock, Globe, Eye, EyeOff, CornerDownRight, ChevronDown, Volume2, Square
+  CheckCircle2, Scale, ArrowRight, Lock, Globe, Eye, EyeOff, CornerDownRight, ChevronDown, Volume2, Square,
+  Camera, Image as ImageIcon, Video, Music, Paperclip, X
 } from 'lucide-react';
+
 import confetti from 'canvas-confetti';
 
 export interface ChatMessage {
@@ -45,6 +47,16 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
   const [showHelplinesModal, setShowHelplinesModal] = useState(false);
   const [helplinesList, setHelplinesList] = useState<any[]>([]);
 
+  // Media Attachment & Camera Capture States
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [attachments, setAttachments] = useState<Array<{ id: string; name: string; type: 'image' | 'audio' | 'video' | 'doc'; url: string }>>([]);
+  const [activeFileType, setActiveFileType] = useState<'image' | 'audio' | 'video' | 'doc'>('image');
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+
   // Web MediaRecorder Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
@@ -57,6 +69,84 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
   const [activePII, setActivePII] = useState<PIIAnalysisResult | null>(null);
   const [activeConsent, setActiveConsent] = useState<ConsentVerificationResponse | null>(null);
   const [activeFiling, setActiveFiling] = useState<PortalFilingResult | null>(null);
+
+  // Attachment & Camera Handlers
+  const handleOpenFileInput = (type: 'image' | 'audio' | 'video' | 'doc') => {
+    setActiveFileType(type);
+    setShowAttachmentMenu(false);
+    if (fileInputRef.current) {
+      if (type === 'image') fileInputRef.current.accept = 'image/*';
+      else if (type === 'audio') fileInputRef.current.accept = 'audio/*';
+      else if (type === 'video') fileInputRef.current.accept = 'video/*';
+      else fileInputRef.current.accept = '.pdf,.docx,.doc,.txt';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const url = URL.createObjectURL(file);
+    const newAtt = {
+      id: `att_${Date.now()}`,
+      name: file.name,
+      type: activeFileType,
+      url
+    };
+    setAttachments(prev => [...prev, newAtt]);
+    e.target.value = '';
+  };
+
+  const handleStartCamera = async () => {
+    setShowAttachmentMenu(false);
+    setShowCameraModal(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      cameraStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err: any) {
+      alert("Could not access camera: " + err.message);
+      setShowCameraModal(false);
+    }
+  };
+
+  const handleCapturePhoto = () => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth || 640;
+    canvas.height = videoRef.current.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      const url = canvas.toDataURL('image/jpeg');
+      setAttachments(prev => [
+        ...prev,
+        {
+          id: `cam_${Date.now()}`,
+          name: `Camera_Snapshot_${Date.now().toString().slice(-4)}.jpg`,
+          type: 'image',
+          url
+        }
+      ]);
+    }
+    handleCloseCamera();
+  };
+
+  const handleCloseCamera = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach(track => track.stop());
+      cameraStreamRef.current = null;
+    }
+    setShowCameraModal(false);
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(att => att.id !== id));
+  };
+
 
   // Interactive controls in cards
   const [signatureName, setSignatureName] = useState('');
@@ -222,11 +312,19 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
   };
 
   const handleSendPrompt = async (promptText?: string) => {
-    const textToSend = promptText || inputPrompt;
-    if (!textToSend.trim() || loading) return;
+    let textToSend = promptText || inputPrompt;
+    if (!textToSend.trim() && attachments.length === 0) return;
+    if (loading) return;
+
+    if (attachments.length > 0) {
+      const attInfo = attachments.map(a => `[Attached Evidence ${a.type.toUpperCase()}: ${a.name}]`).join('\n');
+      textToSend = textToSend ? `${textToSend}\n\nEvidence Files Attached:\n${attInfo}` : `Attached Evidence Files:\n${attInfo}`;
+      setAttachments([]);
+    }
 
     const userMsgId = `user_${Date.now()}`;
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
 
     setMessages(prev => [
       ...prev,
@@ -450,57 +548,133 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
             </h1>
 
             {/* Central Floating Prompt Capsule */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendPrompt();
-              }}
-              className="w-full bg-[#1E1F20] hover:bg-[#232426] border border-[#2A2B2D] focus-within:border-slate-600 rounded-full px-5 py-3.5 flex items-center gap-3 shadow-2xl transition-all"
-            >
-              <button
-                type="button"
-                className="p-1 text-slate-400 hover:text-white transition-all"
-                title="Attach document from vault"
+            <div className="w-full relative">
+              {/* Attachment Preview Badges */}
+              {attachments.length > 0 && (
+                <div className="flex items-center gap-2 pb-2 px-1 flex-wrap w-full">
+                  {attachments.map((att) => (
+                    <div key={att.id} className="bg-[#28292A] border border-[#37393B] px-3 py-1 rounded-full text-xs text-slate-200 flex items-center gap-2 shadow">
+                      {att.type === 'image' && <ImageIcon className="w-3.5 h-3.5 text-blue-400" />}
+                      {att.type === 'audio' && <Music className="w-3.5 h-3.5 text-amber-400" />}
+                      {att.type === 'video' && <Video className="w-3.5 h-3.5 text-purple-400" />}
+                      {att.type === 'doc' && <FileText className="w-3.5 h-3.5 text-rose-400" />}
+                      <span className="truncate max-w-[140px] font-mono text-[11px]">{att.name}</span>
+                      <button type="button" onClick={() => handleRemoveAttachment(att.id)} className="text-slate-400 hover:text-red-400">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendPrompt();
+                }}
+                className="w-full bg-[#1E1F20] hover:bg-[#232426] border border-[#2A2B2D] focus-within:border-slate-600 rounded-full px-5 py-3.5 flex items-center gap-3 shadow-2xl transition-all relative"
               >
-                <Plus className="w-5 h-5" />
-              </button>
-
-              <input
-                type="text"
-                value={inputPrompt}
-                onChange={(e) => setInputPrompt(e.target.value)}
-                placeholder="Ask Gemini or assign a legal task..."
-                className="flex-1 bg-transparent text-sm text-white placeholder-slate-400 focus:outline-none"
-              />
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400 font-medium px-2.5 py-1 rounded-full bg-[#28292A] border border-[#37393B] flex items-center gap-1">
-                  Flash <ChevronDown className="w-3 h-3 text-slate-400" />
-                </span>
-
-                <button
-                  type="button"
-                  onClick={toggleMicrophoneRecording}
-                  className={`p-2 rounded-full transition-all ${
-                    isRecording
-                      ? 'bg-red-600 text-white animate-pulse shadow-lg shadow-red-600/40'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                  title={isRecording ? "Click to Stop Recording" : "Click to Speak (Sarvam AI Audio)"}
-                >
-                  {isRecording ? <Square className="w-4 h-4 fill-white" /> : <Mic className="w-5 h-5" />}
-                </button>
-
-                {inputPrompt.trim() && (
+                <div className="relative">
                   <button
-                    type="submit"
-                    className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all shadow"
+                    type="button"
+                    onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                    className={`p-1.5 rounded-full transition-all ${
+                      showAttachmentMenu ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Attach Image, Audio, Video, Document or Camera Photo"
                   >
-                    <Send className="w-4 h-4" />
+                    <Plus className="w-5 h-5" />
                   </button>
-                )}
-              </div>
-            </form>
+
+                  {/* Media Attachment Popover Menu */}
+                  {showAttachmentMenu && (
+                    <div className="absolute bottom-12 left-0 bg-[#1E1F20] border border-[#2A2B2D] rounded-2xl p-2 shadow-2xl z-40 space-y-1 w-56 text-xs text-left">
+                      <button
+                        type="button"
+                        onClick={handleStartCamera}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all"
+                      >
+                        <Camera className="w-4 h-4 text-emerald-400" />
+                        <span>Take Photo (Camera)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFileInput('image')}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all"
+                      >
+                        <ImageIcon className="w-4 h-4 text-blue-400" />
+                        <span>Upload Image</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFileInput('audio')}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all"
+                      >
+                        <Music className="w-4 h-4 text-amber-400" />
+                        <span>Upload Audio</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFileInput('video')}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all"
+                      >
+                        <Video className="w-4 h-4 text-purple-400" />
+                        <span>Upload Video</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFileInput('doc')}
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all"
+                      >
+                        <FileText className="w-4 h-4 text-rose-400" />
+                        <span>Upload Document (PDF/DOC)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  type="text"
+                  value={inputPrompt}
+                  onChange={(e) => setInputPrompt(e.target.value)}
+                  placeholder="Ask Gemini or assign a legal task..."
+                  className="flex-1 bg-transparent text-sm text-white placeholder-slate-400 focus:outline-none"
+                />
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400 font-medium px-2.5 py-1 rounded-full bg-[#28292A] border border-[#37393B] flex items-center gap-1">
+                    Flash <ChevronDown className="w-3 h-3 text-slate-400" />
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={toggleMicrophoneRecording}
+                    className={`p-2 rounded-full transition-all ${
+                      isRecording
+                        ? 'bg-red-600 text-white animate-pulse shadow-lg shadow-red-600/40'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title={isRecording ? "Click to Stop Recording" : "Click to Speak (Sarvam AI Audio)"}
+                  >
+                    {isRecording ? <Square className="w-4 h-4 fill-white" /> : <Mic className="w-5 h-5" />}
+                  </button>
+
+                  {(inputPrompt.trim() || attachments.length > 0) && (
+                    <button
+                      type="submit"
+                      className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all shadow"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
 
             {isRecording && (
               <div className="text-xs text-red-400 font-mono animate-pulse flex items-center gap-2">
@@ -624,15 +798,46 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
                             </div>
                           )}
 
-                          <button
-                            onClick={() => handleGenerateDraft(msg.data)}
-                            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow flex items-center justify-center gap-2 transition-all"
-                          >
-                            <FileText className="w-4 h-4" />
-                            Draft Statutory Legal Petition
-                          </button>
+                          {/* Grievance Detail Collector Box (Hear all user grievances before drafting) */}
+                          {msg.data.follow_up_questions?.length > 0 && (
+                            <div className="bg-amber-950/40 p-4 rounded-xl border border-amber-500/40 space-y-2 text-xs">
+                              <span className="font-bold text-amber-400 flex items-center gap-1.5 font-mono text-[11px]">
+                                ❓ Essential Details Needed Before Drafting Petition:
+                              </span>
+                              <ul className="space-y-1.5 pl-4 list-disc text-amber-200/90 text-xs">
+                                {msg.data.follow_up_questions.map((q: string, qIdx: number) => (
+                                  <li key={qIdx}>{q}</li>
+                                ))}
+                              </ul>
+                              <p className="text-[11px] text-amber-300/70 pt-1 italic">
+                                💡 Tip: You can reply in chat with these details or click the '+' icon to attach photo/video/audio evidence before drafting!
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const inputEl = document.querySelector('input[type="text"]') as HTMLInputElement;
+                                if (inputEl) inputEl.focus();
+                              }}
+                              className="flex-1 py-2.5 rounded-xl bg-[#28292A] hover:bg-[#37393B] border border-[#37393B] text-slate-200 font-bold text-xs shadow flex items-center justify-center gap-1.5 transition-all"
+                            >
+                              💬 Provide Details in Chat
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleGenerateDraft(msg.data)}
+                              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow flex items-center justify-center gap-2 transition-all"
+                            >
+                              <FileText className="w-4 h-4" />
+                              Draft Statutory Legal Petition
+                            </button>
+                          </div>
                         </div>
                       )}
+
 
                       {/* Legal Draft Card */}
                       {msg.type === 'draft_card' && msg.data && (
@@ -927,21 +1132,94 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
 
       {/* Floating Bottom Prompt Capsule (When Messages Exist) */}
       {messages.length > 0 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 max-w-2xl w-full px-4 z-20">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 max-w-2xl w-full px-4 z-20 space-y-2">
+          {/* Attachment Preview Badges */}
+          {attachments.length > 0 && (
+            <div className="flex items-center gap-2 px-1 flex-wrap w-full">
+              {attachments.map((att) => (
+                <div key={att.id} className="bg-[#28292A] border border-[#37393B] px-3 py-1 rounded-full text-xs text-slate-200 flex items-center gap-2 shadow">
+                  {att.type === 'image' && <ImageIcon className="w-3.5 h-3.5 text-blue-400" />}
+                  {att.type === 'audio' && <Music className="w-3.5 h-3.5 text-amber-400" />}
+                  {att.type === 'video' && <Video className="w-3.5 h-3.5 text-purple-400" />}
+                  {att.type === 'doc' && <FileText className="w-3.5 h-3.5 text-rose-400" />}
+                  <span className="truncate max-w-[140px] font-mono text-[11px]">{att.name}</span>
+                  <button type="button" onClick={() => handleRemoveAttachment(att.id)} className="text-slate-400 hover:text-red-400">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSendPrompt();
             }}
-            className="w-full bg-[#1E1F20] hover:bg-[#232426] border border-[#2A2B2D] focus-within:border-slate-600 rounded-full px-5 py-3 flex items-center gap-3 shadow-2xl transition-all"
+            className="w-full bg-[#1E1F20] hover:bg-[#232426] border border-[#2A2B2D] focus-within:border-slate-600 rounded-full px-5 py-3 flex items-center gap-3 shadow-2xl transition-all relative"
           >
-            <button
-              type="button"
-              className="p-1 text-slate-400 hover:text-white transition-all"
-              title="Attach document from vault"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                className={`p-1.5 rounded-full transition-all ${
+                  showAttachmentMenu ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Attach Image, Audio, Video, Document or Camera Photo"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+
+              {/* Media Attachment Popover Menu */}
+              {showAttachmentMenu && (
+                <div className="absolute bottom-12 left-0 bg-[#1E1F20] border border-[#2A2B2D] rounded-2xl p-2 shadow-2xl z-40 space-y-1 w-56 text-xs text-left">
+                  <button
+                    type="button"
+                    onClick={handleStartCamera}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all"
+                  >
+                    <Camera className="w-4 h-4 text-emerald-400" />
+                    <span>Take Photo (Camera)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenFileInput('image')}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all"
+                  >
+                    <ImageIcon className="w-4 h-4 text-blue-400" />
+                    <span>Upload Image</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenFileInput('audio')}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all"
+                  >
+                    <Music className="w-4 h-4 text-amber-400" />
+                    <span>Upload Audio</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenFileInput('video')}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all"
+                  >
+                    <Video className="w-4 h-4 text-purple-400" />
+                    <span>Upload Video</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenFileInput('doc')}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all"
+                  >
+                    <FileText className="w-4 h-4 text-rose-400" />
+                    <span>Upload Document (PDF/DOC)</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             <input
               type="text"
@@ -964,7 +1242,7 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
               {isRecording ? <Square className="w-4 h-4 fill-white" /> : <Mic className="w-5 h-5" />}
             </button>
 
-            {inputPrompt.trim() && (
+            {(inputPrompt.trim() || attachments.length > 0) && (
               <button
                 type="submit"
                 className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all shadow"
@@ -975,6 +1253,52 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
           </form>
         </div>
       )}
+
+      {/* Hidden File Input for Image, Audio, Video, Document */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
+      {/* Live Camera Snapshot Modal */}
+      {showCameraModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#1E1F20] border border-[#2A2B2D] rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl flex flex-col items-center">
+            <div className="flex items-center justify-between w-full border-b border-[#2A2B2D] pb-3">
+              <div className="flex items-center gap-2">
+                <Camera className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">Camera Evidence Capture</h3>
+              </div>
+              <button onClick={handleCloseCamera} className="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            <div className="w-full relative bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center border border-[#2A2B2D]">
+              <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            </div>
+
+            <div className="flex items-center gap-3 w-full pt-1">
+              <button
+                type="button"
+                onClick={handleCloseCamera}
+                className="flex-1 py-2.5 rounded-xl bg-[#28292A] hover:bg-[#37393B] text-slate-300 font-bold text-xs transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCapturePhoto}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow transition-all"
+              >
+                <Camera className="w-4 h-4" />
+                Snap Photo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

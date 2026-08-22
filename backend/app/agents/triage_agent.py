@@ -102,16 +102,29 @@ class TriageAgent(BaseAgent):
         text_lower = raw_text.lower()
         loc_lower = (location_details or "").lower()
 
+        # Check for missing critical details (Location/Ward, Specific Dates, Evidence)
+        has_location = bool(location_details or any(w in text_lower for w in ["ward", "delhi", "gurugram", "gurgaon", "bengaluru", "bangalore", "mumbai", "pune", "lucknow", "hyderabad", "chennai", "kolkata"]))
+        has_dates = any(w in text_lower for w in ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "2024", "2025", "2026", "yesterday", "today", "last week", "month"])
+
+
+        follow_ups = []
+        if not has_location:
+            follow_ups.append("Which specific City, District, Ward Number or Police Station area did this incident occur in?")
+        if not has_dates:
+            follow_ups.append("When did this incident occur (date, time, or approximate duration)?")
+        
+        needs_more = len(follow_ups) > 0
+
         # Priority 1: Explicit RTI Applications
         if "rti" in text_lower or "right to information" in text_lower or "tender" in text_lower or "certified cop" in text_lower:
             return TriageResult(
                 pathway=StatutoryPathway.RTI_ACT_2005,
                 public_authority="Public Information Officer, Department of Public Works / Authority",
-                statutory_sections=["Section 6(1), Right to Information Act 2005", "Section 4(1)(b) Proactive Disclosure"],
+                statutory_sections=["Section 6(1), Right to Information Act 2005", "Section 2(j)(i) Right to inspection of work, documents, records"],
                 confidence_score=0.96,
                 summary=f"RTI query to inspect expenditure and certified copies for: {raw_text[:120]}",
-                follow_up_questions=["Which specific fiscal year records do you require?"],
-                requires_more_info=False
+                follow_up_questions=follow_ups if follow_ups else ["Which specific fiscal year records or document reference numbers do you require?"],
+                requires_more_info=needs_more
             )
 
         # Priority 2: Consumer Disputes
@@ -122,8 +135,8 @@ class TriageAgent(BaseAgent):
                 statutory_sections=["Section 35, Consumer Protection Act 2019"],
                 confidence_score=0.92,
                 summary=f"Consumer petition seeking refund/compensation for: {raw_text[:120]}",
-                follow_up_questions=["Do you have the original purchase invoice copy?"],
-                requires_more_info=False
+                follow_up_questions=follow_ups if follow_ups else ["Do you have the original purchase invoice copy and written complaint receipt?"],
+                requires_more_info=needs_more
             )
 
         # Priority 3: Road Damage & City/National Portal Routing
@@ -155,8 +168,8 @@ class TriageAgent(BaseAgent):
                 statutory_sections=["State Municipalities Act (Civic Duty of Maintenance)", "Article 21 Right to Quality Infrastructure"],
                 confidence_score=0.96,
                 summary=f"Road Infrastructure & Pothole Repair Grievance for: {raw_text[:120]}",
-                follow_up_questions=["Please attach geo-tagged photograph with GPS coordinates", "Specify Ward/Zone & nearest landmark"],
-                requires_more_info=False
+                follow_up_questions=follow_ups if follow_ups else ["Please attach geo-tagged photograph with GPS coordinates", "Specify Ward/Zone & nearest landmark"],
+                requires_more_info=needs_more
             )
 
         if "garbage" in text_lower or "drainage" in text_lower or "water" in text_lower or "street light" in text_lower:
@@ -166,8 +179,8 @@ class TriageAgent(BaseAgent):
                 statutory_sections=["State Municipalities Act, Civic Duty & Public Works Section"],
                 confidence_score=0.94,
                 summary=f"Municipal complaint regarding local civic infrastructure: {raw_text[:120]}",
-                follow_up_questions=["What is the specific Ward number or landmark?"],
-                requires_more_info=False
+                follow_up_questions=follow_ups if follow_ups else ["What is the specific Ward number or landmark?"],
+                requires_more_info=needs_more
             )
         else:
             return TriageResult(
@@ -176,6 +189,7 @@ class TriageAgent(BaseAgent):
                 statutory_sections=["Rule 3, Centralised Public Grievance Redress and Monitoring System Guidelines"],
                 confidence_score=0.89,
                 summary=f"Public grievance petition registered for: {raw_text[:120]}",
-                follow_up_questions=["Have you previously filed a local application?"],
-                requires_more_info=False
+                follow_up_questions=follow_ups if follow_ups else ["Have you previously filed a local application or ticket?"],
+                requires_more_info=needs_more
             )
+
