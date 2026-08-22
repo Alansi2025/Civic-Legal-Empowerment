@@ -22,10 +22,6 @@ class TriageAgent(BaseAgent):
         super().__init__(name="Legal Triage & Routing Agent", role_prompt=role_prompt)
 
     def evaluate(self, intake: GrievanceInput) -> TriageResult:
-        from app.agents.conversational_agent import ConversationalNLMAgent
-        nlm_agent = ConversationalNLMAgent()
-        nlm_res = nlm_agent.process(intake)
-
         text_clean = intake.raw_text.strip().lower()
 
         # Grievance indicator keywords
@@ -47,7 +43,11 @@ class TriageAgent(BaseAgent):
         ]
         is_meta_chat = any(phrase in text_clean for phrase in conversational_phrases)
 
+        # Single-pass fast path for casual chat & greetings
         if (is_meta_chat or not has_grievance_kw or len(text_clean) < 10) and not has_grievance_kw:
+            from app.agents.conversational_agent import ConversationalNLMAgent
+            nlm_agent = ConversationalNLMAgent()
+            nlm_res = nlm_agent.process(intake)
             return TriageResult(
                 pathway=StatutoryPathway.UNKNOWN,
                 public_authority="Legal Adviser AI",
@@ -59,25 +59,23 @@ class TriageAgent(BaseAgent):
                 nlm_info=nlm_res.get("nlm_info")
             )
 
-
-
-
+        # Single-pass fast path for legal grievances
         prompt = (
             f"Citizen Grievance Text:\n\"{intake.raw_text}\"\n\n"
             f"Input Language: {intake.language}\n"
             f"Location Details: {intake.location_details or 'Not specified'}\n\n"
             "Strict Instructions:\n"
-            "1. Map the grievance to the exact statutory pathway.\n"
-            "2. Identify the target Public Body / Public Information Officer / Department.\n"
-            "3. Cite relevant legal sections (e.g. Sec 6(1) RTI Act 2005, Rule 3 CPGRAMS, Sec 35 Consumer Protection Act 2019).\n"
-            "4. Provide follow-up questions if critical info is missing.\n\n"
-            "Return JSON matching keys: pathway, public_authority, statutory_sections, confidence_score, summary, follow_up_questions, requires_more_info."
+            "1. Map the grievance to the exact statutory pathway (RTI Act 2005, Consumer Protection Act 2019, Municipal Works, CPGRAMS).\n"
+            "2. Identify the target Public Body / Department / Authority.\n"
+            "3. Cite relevant legal sections.\n"
+            "4. Provide a clear, empathetic 2-3 sentence conversational guidance reply for the citizen.\n\n"
+            "Return JSON matching keys: pathway, public_authority, statutory_sections, confidence_score, summary, conversational_reply, follow_up_questions, requires_more_info."
         )
 
         raw_response = self.call_llm(prompt)
         triage_res = self._parse_and_refine(raw_response, intake.raw_text, intake.location_details)
-        triage_res.nlm_info = nlm_res.get("nlm_info")
         return triage_res
+
 
 
 
@@ -110,9 +108,11 @@ class TriageAgent(BaseAgent):
                 statutory_sections=data.get("statutory_sections", ["Section 6(1) Right to Information Act 2005"]),
                 confidence_score=float(data.get("confidence_score", 0.95)),
                 summary=data.get("summary", f"Grievance regarding: {raw_text[:100]}..."),
+                conversational_reply=data.get("conversational_reply"),
                 follow_up_questions=data.get("follow_up_questions", []),
                 requires_more_info=bool(data.get("requires_more_info", False))
             )
+
         except Exception as e:
             logger.info(f"Using rule-based self-refinement fallback for Triage parsing: {e}")
             return self._heuristic_triage(raw_text, location_details)
