@@ -125,43 +125,13 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
         </button>
       </div>
 
-      {/* Legal Tools Section */}
-      <div className="px-3 mb-3 space-y-1">
-        <div className="pt-1 pb-1.5 px-3 text-[10px] font-bold text-slate-400 font-mono uppercase tracking-wider">
-          Legal Tools
-        </div>
-
-        <button
-          onClick={() => onSelectPreset('IPC_BNS_TOOL')}
-          className="w-full py-2 px-3 rounded-xl bg-[#131314] hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all text-left text-xs border border-[#2A2B2D]"
-        >
-          <Scale className="w-4 h-4 text-amber-400 flex-shrink-0" />
-          <span className="font-medium">IPC ↔ BNS Code Converter</span>
-        </button>
-
-        <button
-          onClick={() => onSelectPreset('LAWSTEPS_TOOL')}
-          className="w-full py-2 px-3 rounded-xl bg-[#131314] hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all text-left text-xs border border-[#2A2B2D]"
-        >
-          <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-          <span className="font-medium">LawSteps 6-Panel Analysis</span>
-        </button>
-
-        <button
-          onClick={() => onSelectPreset('HELPLINES_TOOL')}
-          className="w-full py-2 px-3 rounded-xl bg-[#131314] hover:bg-[#28292A] text-slate-200 hover:text-white flex items-center gap-2.5 transition-all text-left text-xs border border-[#2A2B2D]"
-        >
-          <Globe className="w-4 h-4 text-blue-400 flex-shrink-0" />
-          <span className="font-medium">Free Legal Aid Helplines (15100)</span>
-        </button>
-      </div>
-
       {/* Navigation & Saved Recents List */}
       <div className="flex-1 overflow-y-auto px-3 space-y-1 text-xs">
         <div className="pt-2 pb-1.5 px-3 text-[11px] font-bold text-slate-400 font-mono uppercase tracking-wider flex items-center justify-between">
           <span>Recents</span>
           <span className="text-[10px] text-slate-500 font-normal">MongoDB Saved</span>
         </div>
+
 
 
         {threads.length === 0 ? (
