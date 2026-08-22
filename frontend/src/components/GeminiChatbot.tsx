@@ -558,9 +558,25 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
     }
   };
 
+  // Trigger initialPrompt or Sidebar Legal Tool presets
+  useEffect(() => {
+    if (initialPrompt) {
+      if (initialPrompt === 'IPC_BNS_TOOL') {
+        handleSearchIPCBNS('302');
+      } else if (initialPrompt === 'LAWSTEPS_TOOL') {
+        handleExecuteLawSteps("My neighbor encroached on public land and blocked the drainage channel.");
+      } else if (initialPrompt === 'HELPLINES_TOOL') {
+        handleOpenHelplinesModal();
+      } else {
+        handleSendPrompt(initialPrompt);
+      }
+    }
+  }, [initialPrompt]);
+
 
   return (
     <div className="flex-1 bg-[#131314] text-slate-100 flex flex-col h-screen overflow-hidden relative font-sans">
+
       {/* Scrollable Messages Container */}
       <div className={`flex-1 overflow-y-auto px-4 py-8 flex flex-col items-center ${messages.length === 0 ? 'justify-center' : 'justify-start'}`}>
         {messages.length === 0 ? (
@@ -1245,34 +1261,8 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
 
       </div>
 
-      {/* --- AdhiKaar Quick Tool Buttons Bar --- */}
-      <div className="w-full max-w-3xl mx-auto px-4 pb-2 flex items-center justify-center gap-2 flex-wrap text-xs">
-        <button
-          onClick={() => handleSearchIPCBNS('302')}
-          className="px-3 py-1.5 rounded-full bg-[#1E1F20] hover:bg-[#28292A] border border-[#2A2B2D] text-slate-300 hover:text-white flex items-center gap-1.5 transition-all shadow"
-        >
-          <Scale className="w-3.5 h-3.5 text-amber-400" />
-          <span>IPC ↔ BNS Code Converter</span>
-        </button>
-
-        <button
-          onClick={() => handleExecuteLawSteps("My neighbor encroached on public land.")}
-          className="px-3 py-1.5 rounded-full bg-[#1E1F20] hover:bg-[#28292A] border border-[#2A2B2D] text-slate-300 hover:text-white flex items-center gap-1.5 transition-all shadow"
-        >
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>LawSteps 6-Panel Analysis</span>
-        </button>
-
-        <button
-          onClick={handleOpenHelplinesModal}
-          className="px-3 py-1.5 rounded-full bg-[#1E1F20] hover:bg-[#28292A] border border-[#2A2B2D] text-slate-300 hover:text-white flex items-center gap-1.5 transition-all shadow"
-        >
-          <Globe className="w-3.5 h-3.5 text-blue-400" />
-          <span>Free Legal Aid Helplines (15100)</span>
-        </button>
-      </div>
-
       {/* --- AdhiKaar IPC ↔ BNS Converter Modal --- */}
+
       {showIpcModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-[#1E1F20] border border-[#2A2B2D] rounded-2xl max-w-2xl w-full p-6 space-y-5 shadow-2xl">
