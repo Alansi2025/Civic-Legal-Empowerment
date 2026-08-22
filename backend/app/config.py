@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     FALLBACK_MODEL: str = os.getenv("FALLBACK_MODEL", "gemma-4-26b-a4b-it")
     GEMMA_4_DENSE: str = "gemma-4-31b-it"
     GEMMA_4_MOE: str = "gemma-4-26b-a4b-it"
+    GEMMA_4_FAST: str = "gemma-4-12e-it"
+
 
 
     
@@ -29,8 +31,11 @@ class Settings(BaseSettings):
     DATA_ENCRYPTION_KEY: str = os.getenv("DATA_ENCRYPTION_KEY", "uNqT3L3vXqR7mZP1sW8yA5bC9dE4fG2hJ6kL0mN8pQ=")
 
     
-    # Database
+    # Database & MongoDB Configuration
     DATABASE_PATH: str = os.getenv("DATABASE_PATH", "civic_empowerment.db")
+    MONGO_URI: str = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    MONGO_DB_NAME: str = os.getenv("MONGO_DB_NAME", "legal_adviser_ai")
+
     
     # PDF Storage
     PDF_OUTPUT_DIR: str = os.getenv("PDF_OUTPUT_DIR", "generated_pdfs")

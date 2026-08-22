@@ -2,32 +2,60 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Scale, Lock, User, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Scale, Lock, User, ShieldCheck, ArrowRight, Mail } from 'lucide-react';
 import { api } from '../../lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('supervisor');
-  const [password, setPassword] = useState('supervisor123');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setLoading(true);
 
     try {
-      const res = await api.loginSupervisor(username, password);
-      if (res.success) {
-        localStorage.setItem('supervisor_token', res.token);
-        localStorage.setItem('supervisor_user', res.username);
-        router.push('/supervisor');
+      if (isRegistering) {
+        const res = await api.registerUser(username, email, password);
+        if (res.status === 'SUCCESS') {
+          setSuccessMsg('Account registered successfully in MongoDB! You can now log in.');
+          setIsRegistering(false);
+        } else {
+          setError(res.detail || 'Registration failed.');
+        }
       } else {
-        setError(res.message || 'Invalid supervisor credentials.');
+        // First try MongoDB auth
+        try {
+          const mongoRes = await api.loginUser(username, password);
+          if (mongoRes.status === 'SUCCESS') {
+            localStorage.setItem('user_token', mongoRes.access_token);
+            localStorage.setItem('logged_username', mongoRes.user.username);
+            router.push('/');
+            return;
+          }
+        } catch (mErr: any) {
+          // If supervisor credentials
+          if (username === 'supervisor' && password === 'supervisor123') {
+            const res = await api.loginSupervisor(username, password);
+            if (res.success) {
+              localStorage.setItem('supervisor_token', res.token);
+              localStorage.setItem('supervisor_user', res.username);
+              router.push('/supervisor');
+              return;
+            }
+          }
+          setError(mErr.message || 'Invalid username or password.');
+        }
       }
     } catch (err: any) {
-      setError('Could not connect to authentication server.');
+      setError(err.message || 'Could not connect to MongoDB authentication server.');
     } finally {
       setLoading(false);
     }
@@ -44,35 +72,76 @@ export default function LoginPage() {
             </div>
           </div>
           <h1 className="text-xl font-bold text-white tracking-wide">
-            SUPERVISOR & ADMIN PORTAL
+            LEGAL ADVISER AI
           </h1>
           <p className="text-xs text-slate-400">
-            Autonomous Re-ACT Multi-Agent System Control Center
+            {isRegistering ? 'Create MongoDB Account & Vault' : 'Sign in to save chat sessions in MongoDB'}
           </p>
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-4">
+        {/* Register / Login Toggle Tabs */}
+        <div className="flex bg-[#131314] p-1 rounded-xl text-xs font-medium border border-[#2A2B2D]">
+          <button
+            type="button"
+            onClick={() => { setIsRegistering(false); setError(''); setSuccessMsg(''); }}
+            className={`flex-1 py-2 rounded-lg transition-all ${!isRegistering ? 'bg-[#28292A] text-white shadow font-bold' : 'text-slate-400 hover:text-white'}`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => { setIsRegistering(true); setError(''); setSuccessMsg(''); }}
+            className={`flex-1 py-2 rounded-lg transition-all ${isRegistering ? 'bg-[#28292A] text-white shadow font-bold' : 'text-slate-400 hover:text-white'}`}
+          >
+            Register MongoDB Account
+          </button>
+        </div>
+
+        {/* Login/Register Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="bg-red-950/40 border border-red-500/40 rounded-xl p-3 text-xs text-red-300">
               {error}
             </div>
           )}
 
+          {successMsg && (
+            <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-3 text-xs text-emerald-300">
+              {successMsg}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-blue-400" />
-              Supervisor Username
+              Username
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. admin or supervisor"
+              placeholder="e.g. RameshKumar"
               className="w-full bg-slate-900 border border-civic-border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
+
+          {isRegistering && (
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-purple-400" />
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="ramesh@example.com"
+                className="w-full bg-slate-900 border border-civic-border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                required
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
@@ -91,7 +160,7 @@ export default function LoginPage() {
 
           <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-850 text-[11px] text-slate-400 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-            <span>Default Supervisor Credentials: <code className="text-blue-400 font-mono">supervisor / supervisor123</code></span>
+            <span>MongoDB Database: <code className="text-emerald-400 font-mono">legal_adviser_ai.users</code></span>
           </div>
 
           <button
@@ -104,7 +173,7 @@ export default function LoginPage() {
             ) : (
               <>
                 <ArrowRight className="w-4 h-4" />
-                Authenticate Supervisor Session
+                {isRegistering ? 'Create MongoDB Account' : 'Sign In & Load Chat Sessions'}
               </>
             )}
           </button>
@@ -115,10 +184,11 @@ export default function LoginPage() {
             onClick={() => router.push('/')}
             className="text-xs text-slate-400 hover:text-white underline"
           >
-            ← Return to Citizen Intake Portal
+            ← Return to Legal Adviser AI Portal
           </button>
         </div>
       </div>
     </div>
   );
 }
+

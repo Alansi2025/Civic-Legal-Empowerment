@@ -5,6 +5,8 @@ import {
   Sparkles, History, Settings, UserCheck, ShieldCheck, Gem, BookOpen, Layers,
   Compass, AlertTriangle, MessageSquare
 } from 'lucide-react';
+import { api } from '../lib/api';
+
 
 export interface ChatThreadItem {
   id: string;
@@ -27,13 +29,29 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
   const [threads, setThreads] = useState<ChatThreadItem[]>([]);
 
   useEffect(() => {
-    const loadThreads = () => {
+    const loadThreads = async () => {
+      try {
+        const res = await api.listConversations("guest");
+        if (res && res.threads && res.threads.length > 0) {
+          const formatted = res.threads.map((t: any) => ({
+            id: t.thread_id,
+            title: t.title || "Civic Legal Conversation",
+            messages: t.messages || [],
+            updatedAt: t.updated_at || new Date().toISOString()
+          }));
+          setThreads(formatted);
+          localStorage.setItem('gemini_chat_threads', JSON.stringify(formatted));
+          return;
+        }
+      } catch (err) {
+        console.log("MongoDB fetch threads error, fallback to local:", err);
+      }
+
       try {
         const stored = localStorage.getItem('gemini_chat_threads');
         if (stored) {
           setThreads(JSON.parse(stored));
         } else {
-          // Default initial recents
           const defaultRecents: ChatThreadItem[] = [
             {
               id: 'thread_1',
@@ -46,21 +64,8 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
               title: 'NHAI National Highway Pothole',
               messages: [{ id: 'm2', sender: 'user', text: 'File an urgent hazard grievance to National Highways Authority of India (NHAI 1033 / MoRTH) for NH-48.' }],
               updatedAt: new Date().toISOString()
-            },
-            {
-              id: 'thread_3',
-              title: 'BBMP Bengaluru Pothole Report',
-              messages: [{ id: 'm3', sender: 'user', text: 'File a pothole repair petition to BBMP Bengaluru Fix Pothole app for Indiranagar 100ft Road.' }],
-              updatedAt: new Date().toISOString()
-            },
-            {
-              id: 'thread_4',
-              title: 'Delayed Pension CPGRAMS',
-              messages: [{ id: 'm4', sender: 'user', text: 'File a CPGRAMS public grievance petition for central pension delayed 8 months.' }],
-              updatedAt: new Date().toISOString()
             }
           ];
-          localStorage.setItem('gemini_chat_threads', JSON.stringify(defaultRecents));
           setThreads(defaultRecents);
         }
       } catch (e) {
@@ -69,13 +74,12 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
     };
 
     loadThreads();
-    window.addEventListener('storage', loadThreads);
-    const interval = setInterval(loadThreads, 2000);
+    const interval = setInterval(loadThreads, 3000);
     return () => {
-      window.removeEventListener('storage', loadThreads);
       clearInterval(interval);
     };
   }, []);
+
 
   return (
     <aside className="w-64 h-screen bg-[#1E1F20] text-slate-300 flex flex-col border-r border-[#2A2B2D] select-none flex-shrink-0">

@@ -363,29 +363,37 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
       setActiveTriage(triageRes);
 
       if (triageRes.is_conversational) {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `bot_chat_${Date.now()}`,
-            sender: 'bot',
-            type: 'text',
-            text: triageRes.conversational_reply || "Hello! How can I assist you with your civic rights or legal complaints today?",
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-        ]);
+        const botMsg: ChatMessage = {
+          id: `bot_chat_${Date.now()}`,
+          sender: 'bot',
+          type: 'text',
+          text: triageRes.conversational_reply || "Hello! How can I assist you with your civic rights or legal complaints today?",
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => {
+          const updated = [...prev, botMsg];
+          // Persist session to MongoDB
+          api.saveConversation(threadId, "guest", textToSend.slice(0, 30), updated).catch(e => console.log("MongoDB save err:", e));
+          return updated;
+        });
       } else {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `bot_triage_${Date.now()}`,
-            sender: 'bot',
-            type: 'triage_card',
-            text: `I have evaluated your request and categorized it under the statutory legal framework.`,
-            data: triageRes,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-        ]);
+        const botMsg: ChatMessage = {
+          id: `bot_triage_${Date.now()}`,
+          sender: 'bot',
+          type: 'triage_card',
+          text: `I have evaluated your request and categorized it under the statutory legal framework.`,
+          data: triageRes,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => {
+          const updated = [...prev, botMsg];
+          // Persist session to MongoDB
+          api.saveConversation(threadId, "guest", textToSend.slice(0, 30), updated).catch(e => console.log("MongoDB save err:", e));
+          return updated;
+        });
       }
+
+
     } catch (e: any) {
       setMessages(prev => [
         ...prev,
@@ -1094,8 +1102,45 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
                 )}
               </div>
             ))}
+
+            {/* Animated Chatbot Processing Loading Indicator */}
+            {loading && (
+              <div className="flex items-start gap-3 animate-fade-in pt-2">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 bg-gradient-to-tr from-blue-600 to-indigo-600 p-0.5 shadow-lg shadow-blue-500/20">
+                  <div className="w-full h-full bg-[#131314] rounded-full flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-blue-400 animate-spin" />
+                  </div>
+                </div>
+
+                <div className="bg-[#1E1F20] border border-[#2A2B2D] px-5 py-4 rounded-2xl rounded-tl-none space-y-2.5 max-w-lg shadow-2xl">
+                  <div className="flex items-center justify-between gap-3 border-b border-[#2A2B2D] pb-2">
+                    <span className="text-xs font-bold text-blue-400 font-mono flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                      Legal Adviser AI
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 animate-pulse">
+                      {selectedModel === 'gemma-4-12e-it' ? 'Gemma 4 (12E Fast)' : selectedModel === 'gemma-4-31b-it' ? 'Gemma 4 (31B Dense)' : selectedModel === 'gemma-4-26b-a4b-it' ? 'Gemma 4 (MoE)' : 'Gemini 3.5 Lite'}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                    Analyzing grievance details, evidence files, and evaluating statutory provisions under BNS 2023 & RTI Act...
+                  </p>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+                      <span className="w-2 h-2 rounded-full bg-purple-500 animate-bounce delay-100"></span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce delay-200"></span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-mono">Formulating step-by-step legal guidance...</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
+
       </div>
 
       {/* --- AdhiKaar Quick Tool Buttons Bar --- */}

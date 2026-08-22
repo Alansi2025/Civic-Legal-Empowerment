@@ -68,6 +68,7 @@ def get_current_model():
     return {
         "current_model": settings.DEFAULT_MODEL,
         "available_models": [
+            {"id": "gemma-4-12e-it", "name": "Gemma 4 (12E Ultra Fast)", "description": "Gemma 4 12E model for local fast response"},
             {"id": "gemma-4-31b-it", "name": "Gemma 4 (31B Dense)", "description": "Gemma 4 dense model, 31B parameters"},
             {"id": "gemma-4-26b-a4b-it", "name": "Gemma 4 (26B MoE)", "description": "Gemma 4 Mixture-of-Experts model"},
             {"id": "gemini-3.7-flash", "name": "Gemini 3.7 Flash", "description": "Fast multimodal 3.7 model"},
@@ -79,12 +80,13 @@ def get_current_model():
 @app.post("/api/settings/model")
 def set_current_model(payload: dict):
     model_id = payload.get("model_id")
-    valid_models = ["gemma-4-31b-it", "gemma-4-26b-a4b-it", "gemini-3.7-flash", "gemini-3.5-flash-lite"]
+    valid_models = ["gemma-4-12e-it", "gemma-4-31b-it", "gemma-4-26b-a4b-it", "gemini-3.7-flash", "gemini-3.5-flash-lite"]
     if model_id in valid_models:
         settings.DEFAULT_MODEL = model_id
         logger.info(f"Updated default active AI model to: {settings.DEFAULT_MODEL}")
         return {"status": "SUCCESS", "current_model": settings.DEFAULT_MODEL}
     raise HTTPException(status_code=400, detail=f"Invalid model_id. Must be one of {valid_models}")
+
 
 
 
@@ -305,6 +307,105 @@ def push_to_digilocker(req: DigiLockerPushRequest):
 def get_filing_history():
     """Fetch persistent audit trail & past civic filings from SQLite."""
     return get_all_filings()
+
+
+# --- MongoDB User Authentication & Chat Session Endpoints ---
+from app.mongodb_client import (
+    register_mongodb_user, authenticate_mongodb_user, get_user_profile,
+    save_mongodb_conversation, get_user_conversations, get_conversation_by_thread_id, delete_mongodb_conversation
+)
+from datetime import datetime
+
+@app.post("/api/auth/register", tags=["MongoDB User Auth"])
+def register_user(payload: dict):
+    """Register user and store profile and hashed password in MongoDB."""
+    username = payload.get("username", "").strip()
+    email = payload.get("email", "").strip()
+    password = payload.get("password", "").strip()
+    full_name = payload.get("full_name")
+    role = payload.get("role", "citizen")
+
+    if not username or not email or not password:
+        raise HTTPException(status_code=400, detail="Username, email, and password are required.")
+    
+    try:
+        user_doc = register_mongodb_user(username, email, password, full_name, role)
+        return {"status": "SUCCESS", "message": "User registered successfully in MongoDB.", "user": user_doc}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Error registering user in MongoDB: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error registering user.")
+
+
+@app.post("/api/auth/login", tags=["MongoDB User Auth"])
+def login_user(payload: dict):
+    """Authenticate user against MongoDB users collection."""
+    username = payload.get("username", "").strip()
+    password = payload.get("password", "").strip()
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username and password are required.")
+    
+    try:
+        user_doc = authenticate_mongodb_user(username, password)
+        return {
+            "status": "SUCCESS",
+            "access_token": f"mongo_token_{username}_{int(datetime.utcnow().timestamp())}",
+            "token_type": "bearer",
+            "user": user_doc
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=401, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Error logging in user with MongoDB: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error logging in.")
+
+
+@app.post("/api/conversations/save", tags=["MongoDB Chat Persistence"])
+def save_conversation(payload: dict):
+    """Save or update chat conversation session thread into MongoDB."""
+    thread_id = payload.get("thread_id") or f"thread_{int(datetime.utcnow().timestamp())}"
+    user_id = payload.get("user_id", "guest")
+    title = payload.get("title", "Civic Legal Conversation")
+    messages = payload.get("messages", [])
+
+    try:
+        doc = save_mongodb_conversation(thread_id, user_id, title, messages)
+        return {"status": "SUCCESS", "message": "Conversation saved to MongoDB.", "thread": doc}
+    except Exception as e:
+        logger.error(f"Error saving conversation to MongoDB: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/conversations/list", tags=["MongoDB Chat Persistence"])
+def list_conversations(user_id: str = "guest"):
+    """Fetch user's saved chat conversation threads from MongoDB."""
+    try:
+        threads = get_user_conversations(user_id)
+        return {"total": len(threads), "threads": threads}
+    except Exception as e:
+        logger.error(f"Error listing conversations from MongoDB: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/conversations/{thread_id}", tags=["MongoDB Chat Persistence"])
+def get_conversation(thread_id: str):
+    """Fetch specific conversation thread from MongoDB."""
+    doc = get_conversation_by_thread_id(thread_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Conversation thread not found in MongoDB.")
+    return doc
+
+
+@app.delete("/api/conversations/{thread_id}", tags=["MongoDB Chat Persistence"])
+def delete_conversation(thread_id: str):
+    """Delete a conversation session thread from MongoDB."""
+    success = delete_mongodb_conversation(thread_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Conversation thread not found or already deleted.")
+    return {"status": "SUCCESS", "message": f"Thread '{thread_id}' deleted from MongoDB."}
+
 
 
 

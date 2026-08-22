@@ -143,6 +143,38 @@ export const api = {
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return res.json();
+  },
+
+  // --- MongoDB User Auth & Chat Session Methods ---
+  registerUser: async (username: string, email: string, password_raw: string): Promise<any> => {
+    const res = await client.post('/api/auth/register', { username, email, password: password_raw });
+    return res.data;
+  },
+
+  loginUser: async (username: string, password_raw: string): Promise<any> => {
+    const res = await client.post('/api/auth/login', { username, password: password_raw });
+    return res.data;
+  },
+
+  saveConversation: async (thread_id: string, user_id: string, title: string, messages: any[]): Promise<any> => {
+    const res = await client.post('/api/conversations/save', { thread_id, user_id, title, messages });
+    return res.data;
+  },
+
+  listConversations: async (user_id: string = "guest"): Promise<any> => {
+    const res = await client.get(`/api/conversations/list?user_id=${user_id}`);
+    return res.data;
+  },
+
+  getConversation: async (thread_id: string): Promise<any> => {
+    const res = await client.get(`/api/conversations/${thread_id}`);
+    return res.data;
+  },
+
+  deleteConversation: async (thread_id: string): Promise<any> => {
+    const res = await client.delete(`/api/conversations/${thread_id}`);
+    return res.data;
   }
 };
+
 
