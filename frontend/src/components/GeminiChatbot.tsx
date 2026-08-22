@@ -53,9 +53,24 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
   const [attachments, setAttachments] = useState<Array<{ id: string; name: string; type: 'image' | 'audio' | 'video' | 'doc'; url: string }>>([]);
   const [activeFileType, setActiveFileType] = useState<'image' | 'audio' | 'video' | 'doc'>('image');
 
+  // Gemma 4 Model Selector State
+  const [selectedModel, setSelectedModel] = useState<string>('gemma-4-31b-it');
+  const [showModelDropdown, setShowModelDropdown] = useState<boolean>(false);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+
+  const handleSelectModel = async (modelId: string) => {
+    setSelectedModel(modelId);
+    setShowModelDropdown(false);
+    try {
+      await api.updateModelSetting(modelId);
+    } catch (e) {
+      console.log("Error switching model:", e);
+    }
+  };
+
 
   // Web MediaRecorder Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -646,9 +661,81 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
                 />
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400 font-medium px-2.5 py-1 rounded-full bg-[#28292A] border border-[#37393B] flex items-center gap-1">
-                    Flash <ChevronDown className="w-3 h-3 text-slate-400" />
-                  </span>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowModelDropdown(!showModelDropdown)}
+                      className="text-xs text-slate-300 font-medium px-2.5 py-1 rounded-full bg-[#28292A] hover:bg-[#37393B] border border-[#37393B] flex items-center gap-1.5 transition-all shadow"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-400" />
+                      <span>{selectedModel === 'gemma-4-31b-it' ? 'Gemma 4 (31B)' : selectedModel === 'gemma-4-26b-a4b-it' ? 'Gemma 4 (26B MoE)' : selectedModel === 'gemini-3.7-flash' ? 'Gemini 3.7' : 'Gemini 3.5 Lite'}</span>
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    </button>
+
+                    {showModelDropdown && (
+                      <div className="absolute bottom-10 right-0 bg-[#1E1F20] border border-[#2A2B2D] rounded-2xl p-2 shadow-2xl z-50 space-y-1 w-60 text-xs text-left">
+                        <div className="px-3 py-1 text-[10px] font-mono font-bold text-slate-400 border-b border-[#2A2B2D] mb-1">
+                          SELECT ACTIVE AI MODEL
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectModel('gemma-4-31b-it')}
+                          className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-all ${
+                            selectedModel === 'gemma-4-31b-it' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-[#28292A] text-slate-200'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-semibold">Gemma 4 (31B Dense)</div>
+                            <div className="text-[10px] text-slate-400 font-mono">gemma-4-31b-it</div>
+                          </div>
+                          {selectedModel === 'gemma-4-31b-it' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectModel('gemma-4-26b-a4b-it')}
+                          className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-all ${
+                            selectedModel === 'gemma-4-26b-a4b-it' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-[#28292A] text-slate-200'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-semibold">Gemma 4 (26B MoE)</div>
+                            <div className="text-[10px] text-slate-400 font-mono">gemma-4-26b-a4b-it</div>
+                          </div>
+                          {selectedModel === 'gemma-4-26b-a4b-it' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectModel('gemini-3.7-flash')}
+                          className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-all ${
+                            selectedModel === 'gemini-3.7-flash' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-[#28292A] text-slate-200'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-semibold">Gemini 3.7 Flash</div>
+                            <div className="text-[10px] text-slate-400 font-mono">gemini-3.7-flash</div>
+                          </div>
+                          {selectedModel === 'gemini-3.7-flash' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSelectModel('gemini-3.5-flash-lite')}
+                          className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-all ${
+                            selectedModel === 'gemini-3.5-flash-lite' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-[#28292A] text-slate-200'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-semibold">Gemini 3.5 Flash Lite</div>
+                            <div className="text-[10px] text-slate-400 font-mono">gemini-3.5-flash-lite</div>
+                          </div>
+                          {selectedModel === 'gemini-3.5-flash-lite' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
 
                   <button
                     type="button"

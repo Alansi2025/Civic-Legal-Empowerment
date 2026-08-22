@@ -58,8 +58,34 @@ def health_check():
         "status": "HEALTHY",
         "app_name": settings.APP_NAME,
         "version": settings.VERSION,
+        "active_model": settings.DEFAULT_MODEL,
         "ieee_7000_privacy_enforced": settings.IEEE_7000_PRIVACY_ENFORCED
     }
+
+
+@app.get("/api/settings/model")
+def get_current_model():
+    return {
+        "current_model": settings.DEFAULT_MODEL,
+        "available_models": [
+            {"id": "gemma-4-31b-it", "name": "Gemma 4 (31B Dense)", "description": "Gemma 4 dense model, 31B parameters"},
+            {"id": "gemma-4-26b-a4b-it", "name": "Gemma 4 (26B MoE)", "description": "Gemma 4 Mixture-of-Experts model"},
+            {"id": "gemini-3.7-flash", "name": "Gemini 3.7 Flash", "description": "Fast multimodal 3.7 model"},
+            {"id": "gemini-3.5-flash-lite", "name": "Gemini 3.5 Flash Lite", "description": "High-throughput 3.5 model"}
+        ]
+    }
+
+
+@app.post("/api/settings/model")
+def set_current_model(payload: dict):
+    model_id = payload.get("model_id")
+    valid_models = ["gemma-4-31b-it", "gemma-4-26b-a4b-it", "gemini-3.7-flash", "gemini-3.5-flash-lite"]
+    if model_id in valid_models:
+        settings.DEFAULT_MODEL = model_id
+        logger.info(f"Updated default active AI model to: {settings.DEFAULT_MODEL}")
+        return {"status": "SUCCESS", "current_model": settings.DEFAULT_MODEL}
+    raise HTTPException(status_code=400, detail=f"Invalid model_id. Must be one of {valid_models}")
+
 
 
 @app.post("/api/triage", response_model=TriageResult)

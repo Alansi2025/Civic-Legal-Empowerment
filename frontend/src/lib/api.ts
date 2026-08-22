@@ -127,5 +127,22 @@ export const api = {
   getHistory: async () => {
     const res = await client.get('/api/history');
     return res.data;
+  },
+
+  async fetchModelSettings() {
+    const res = await fetch(`${API_BASE_URL}/api/settings/model`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return res.json();
+  },
+
+  async updateModelSetting(model_id: string) {
+    const res = await fetch(`${API_BASE_URL}/api/settings/model`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model_id }),
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return res.json();
   }
 };
+

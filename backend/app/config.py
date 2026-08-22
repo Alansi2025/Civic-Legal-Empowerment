@@ -8,10 +8,13 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     ENVIRONMENT: str = "production"
     
-    # Gemini API Configuration
+    # Gemini & Gemma API Configuration
     GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY", "")
-    DEFAULT_MODEL: str = "gemini-3.5-flash-lite"
-    FALLBACK_MODEL: str = "gemini-3.5-flash-lite"
+    DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL", "gemma-4-31b-it")
+    FALLBACK_MODEL: str = os.getenv("FALLBACK_MODEL", "gemma-4-26b-a4b-it")
+    GEMMA_4_DENSE: str = "gemma-4-31b-it"
+    GEMMA_4_MOE: str = "gemma-4-26b-a4b-it"
+
 
     
     # Sarvam AI Configuration (Indian Languages Speech & Voice)
