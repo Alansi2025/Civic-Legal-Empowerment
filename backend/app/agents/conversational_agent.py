@@ -33,6 +33,27 @@ class ConversationalNLMAgent(BaseAgent):
         """
         Processes user input & media attachments, providing step-by-step legal guidance.
         """
+        text_clean = intake.raw_text.strip().lower()
+        is_greeting = text_clean in ["hi", "hello", "hey", "namaste", "good morning", "good evening", "hi there", "hello there", "who are you", "what can you do"] or (len(text_clean) <= 5 and not any(w in text_clean for w in ["rti", "pwd", "tax", "fir", "bns", "road"]))
+
+        if is_greeting:
+            greeting_reply = (
+                "Namaste! 🙏 I am your **Legal Adviser AI** assistant.\n\n"
+                "I am here to help you resolve civic problems, consumer disputes, RTI applications, and legal issues step-by-step.\n\n"
+                "Please tell me what issue or grievance you are facing today, or click the **'+'** button to attach a photo, video, audio, or document evidence!"
+            )
+            return {
+                "conversational_reply": greeting_reply,
+                "nlm_info": NLMExtractedInfo(
+                    user_intent="General Greeting",
+                    key_entities={},
+                    actionable_summary="User sent greeting.",
+                    suggested_next_actions=["Describe your civic or legal grievance", "Upload photo/video/document evidence via '+'"],
+                    is_grievance_ready=False,
+                    sentiment_urgency="Low"
+                )
+            }
+
         has_attachments = "Attached Evidence" in intake.raw_text or "Attached" in intake.raw_text
 
         prompt = (
@@ -57,6 +78,7 @@ class ConversationalNLMAgent(BaseAgent):
             "  \"sentiment_urgency\": \"Low / Normal / High / Emergency\"\n"
             "}"
         )
+
 
         raw_res = self.call_llm(prompt)
         parsed = self._parse_nlm_response(raw_res, intake.raw_text)
