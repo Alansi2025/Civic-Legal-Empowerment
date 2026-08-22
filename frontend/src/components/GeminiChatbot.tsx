@@ -566,9 +566,10 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
           /* Gemini Blank Screen - Center Layout */
           <div className="max-w-2xl w-full mx-auto space-y-8 flex flex-col items-center justify-center my-auto text-center">
             {/* Center Headline */}
-            <h1 className="text-3xl sm:text-4xl font-normal text-slate-200 tracking-tight">
-              Where should we start?
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-snug">
+              Where should Legal Adviser AI begin?
             </h1>
+
 
             {/* Central Floating Prompt Capsule */}
             <div className="w-full relative">
@@ -681,10 +682,24 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
                     </button>
 
                     {showModelDropdown && (
-                      <div className="absolute bottom-10 right-0 bg-[#1E1F20] border border-[#2A2B2D] rounded-2xl p-2 shadow-2xl z-50 space-y-1 w-60 text-xs text-left">
+                      <div className="absolute top-full mt-2 right-0 bg-[#1E1F20]/95 backdrop-blur-md border border-[#2A2B2D] rounded-2xl p-2.5 shadow-2xl z-[100] space-y-1 w-64 text-xs text-left max-h-80 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                         <div className="px-3 py-1 text-[10px] font-mono font-bold text-slate-400 border-b border-[#2A2B2D] mb-1">
                           SELECT ACTIVE AI MODEL
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectModel('gemma-4-12e-it')}
+                          className={`w-full text-left px-3 py-2 rounded-xl flex items-center justify-between transition-all ${
+                            selectedModel === 'gemma-4-12e-it' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-[#28292A] text-slate-200'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-semibold text-emerald-400">Gemma 4 (12E Ultra Fast)</div>
+                            <div className="text-[10px] text-slate-400 font-mono">gemma-4-12e-it</div>
+                          </div>
+                          {selectedModel === 'gemma-4-12e-it' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => handleSelectModel('gemma-4-31b-it')}
@@ -742,6 +757,7 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
                         </button>
                       </div>
                     )}
+
                   </div>
 
 
