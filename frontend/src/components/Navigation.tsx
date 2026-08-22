@@ -19,15 +19,16 @@ export const Navigation: React.FC<NavigationProps> = ({ currentStep }) => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-bold text-lg text-white tracking-wide">
-                CIVIC<span className="text-blue-400">EMPOWER</span>
+                LEGAL<span className="text-blue-400">ADVISER AI</span>
               </h1>
               <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                CIVIC PORTAL
+                OFFICIAL PORTAL
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Multilingual Legal & Civic Assistant
+              Multilingual Legal & Civic Intelligence Platform
             </p>
+
           </div>
         </div>
       </div>

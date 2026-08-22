@@ -86,10 +86,11 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
           <div className="relative w-6 h-6 flex items-center justify-center">
             <Sparkles className="w-6 h-6 text-transparent bg-clip-text bg-gradient-to-tr from-blue-400 via-purple-400 to-amber-400 animate-pulse" />
           </div>
-          <span className="font-semibold text-base text-white tracking-tight">Gemini</span>
+          <span className="font-bold text-sm text-white tracking-tight">Legal Adviser AI</span>
           <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
-            CIVIC
+            PRO
           </span>
+
         </div>
       </div>
 

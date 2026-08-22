@@ -641,7 +641,7 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
                   type="text"
                   value={inputPrompt}
                   onChange={(e) => setInputPrompt(e.target.value)}
-                  placeholder="Ask Gemini or assign a legal task..."
+                  placeholder="Ask Legal Adviser AI or assign a legal task..."
                   className="flex-1 bg-transparent text-sm text-white placeholder-slate-400 focus:outline-none"
                 />
 
@@ -1225,7 +1225,7 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
               type="text"
               value={inputPrompt}
               onChange={(e) => setInputPrompt(e.target.value)}
-              placeholder="Ask Gemini or assign a legal task..."
+              placeholder="Ask Legal Adviser AI or assign a legal task..."
               className="flex-1 bg-transparent text-sm text-white placeholder-slate-400 focus:outline-none"
             />
 

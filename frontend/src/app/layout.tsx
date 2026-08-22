@@ -2,9 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'AI Civic & Legal Empowerment Platform (IEEE MAS Architecture)',
-  description: 'IEEE-compliant multi-agent system powered by Gemini 3.7 / 2.5 for statutory RTI, CPGRAMS, and civic grievances.',
+  title: 'Legal Adviser AI - Multilingual Civic & Legal Empowerment Platform',
+  description: 'AI-powered Legal Adviser platform for statutory RTI, CPGRAMS, IPC ↔ BNS legal code conversion, and civic grievances.',
 };
+
 
 export default function RootLayout({
   children,
