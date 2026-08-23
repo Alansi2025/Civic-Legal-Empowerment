@@ -40,44 +40,8 @@ class ConversationalNLMAgent(BaseAgent):
 
     def process(self, intake: GrievanceInput) -> Dict[str, Any]:
         """
-        Processes user grievance input using the grounded conversational persona.
+        Processes user grievance input using the grounded conversational persona via Gemini/Gemma LLM.
         """
-        text_clean = intake.raw_text.strip().lower()
-        conversational_phrases = [
-
-            "who are you", "tell me about yourself", "which model", "what model", "how do you work",
-            "what can you do", "are you an ai", "who created you", "who made you", "your name",
-            "hi", "hello", "hey", "namaste", "good morning", "good evening", "help", "thanks", "thank you",
-            "what is this", "how are you", "what model are you working on", "model working on"
-        ]
-        is_greeting = any(phrase in text_clean for phrase in conversational_phrases) or (len(text_clean) <= 8 and not any(w in text_clean for w in ["rti", "pwd", "tax", "fir", "bns", "road", "pothole", "rent", "landlord"]))
-
-        if is_greeting:
-            if any(w in text_clean for w in ["model", "working on", "engine", "architecture"]):
-                greeting_reply = (
-                    "Namaste! 🙏 I am **Legal Adviser AI**, powered by Google's **Gemma 4** open-weights model and **Gemini 3.5 Flash**.\n\n"
-                    "I help citizens understand their rights, navigate consumer disputes, file RTI requests, and solve civic grievances in simple, plain language. What can I help you with today?"
-                )
-            else:
-                greeting_reply = (
-                    "Namaste! 🙏 I am your **Legal Adviser AI**.\n\n"
-                    "How can I help you today? Feel free to describe any civic grievance, tenant dispute, consumer issue, or RTI query you have!"
-                )
-
-            return {
-                "conversational_reply": greeting_reply,
-                "nlm_info": NLMExtractedInfo(
-                    user_intent="General Conversation",
-                    key_entities={},
-                    actionable_summary="User asked a casual greeting or identity question.",
-                    suggested_next_actions=["Describe your specific issue or grievance"],
-                    is_grievance_ready=False,
-                    sentiment_urgency="Low"
-                )
-            }
-
-
-
         has_attachments = "Attached Evidence" in intake.raw_text or "Attached" in intake.raw_text
 
         history_context = ""
@@ -94,13 +58,14 @@ class ConversationalNLMAgent(BaseAgent):
             f"Evidence Files Attached: {'Yes' if has_attachments else 'No'}\n\n"
             "Execution Instructions:\n"
             "1. Pay close attention to the Previous Conversation History Context to maintain full multi-turn continuity for follow-up questions (e.g. 'explain point by point', 'can you go in more depth', 'what about the doc').\n"
-            "2. Respond directly as a knowledgeable, helpful civic peer. Do NOT use robotic meta-openers or repeat generic questions if context is already established in past turns.\n"
-            "3. Never assume missing facts or hallucinate specific locations unless mentioned by user.\n"
-            "4. Format the response clearly with scannable bullet points and bold headers.\n"
-            "5. Return valid JSON matching format:\n"
+            "2. Respond directly as a knowledgeable, empathetic, supportive civic peer (Legal Adviser AI). Do NOT use robotic preambles or repeat generic questions if context is already established in past turns.\n"
+            "3. If the user asks general greetings ('hi', 'hello') or meta questions ('who are you', 'what model are you running on'), introduce yourself naturally as Legal Adviser AI powered by Gemma 4 / Gemini API in 2-3 warm sentences without robotic disclaimers.\n"
+            "4. Never assume missing facts or hallucinate specific locations unless mentioned by user.\n"
+            "5. Format the response clearly with scannable markdown formatting.\n"
+            "6. Return valid JSON matching format:\n"
             "{\n"
-            "  \"conversational_reply\": \"<plain-language empathetic advice with lightweight bullets>\",\n"
-            "  \"user_intent\": \"<grievance intent>\",\n"
+            "  \"conversational_reply\": \"<plain-language empathetic advice with lightweight markdown>\",\n"
+            "  \"user_intent\": \"<intent>\",\n"
             "  \"key_entities\": {},\n"
             "  \"actionable_summary\": \"<summary>\",\n"
             "  \"suggested_next_actions\": [\"Step 1: ...\"],\n"
@@ -113,6 +78,7 @@ class ConversationalNLMAgent(BaseAgent):
         raw_res = self.call_llm(prompt)
         parsed = self._parse_nlm_response(raw_res, intake.raw_text)
         return parsed
+
 
     def _parse_nlm_response(self, raw_res: str, original_text: str) -> Dict[str, Any]:
         """Parse JSON response with grounded legal aid fallback."""
