@@ -13,6 +13,13 @@
 
 ---
 
+## 🎬 Video Demos & Walkthroughs
+
+- 📹 **Demo Video 1**: [Watch Platform Walkthrough on YouTube](https://youtu.be/cs_xO_7M2k8)
+- 📹 **Demo Video 2**: [Watch Feature Demonstration on YouTube](https://youtu.be/WRMjai_QzPw)
+
+---
+
 ## 🌟 Key Features & Core Innovations
 
 - 🧠 **Single-Pass Multi-Tier GenAI Pipeline**: Powered by Google **Gemma 4 (31B Dense / 26B MoE)** and **Gemini 3.6 Flash** models. Features a single-pass execution pipeline reducing response latency to ~1.5s with >90% token optimization.
