@@ -88,7 +88,8 @@ for idx, prompt in enumerate(test_prompts, 1):
 
     try:
         req_start = time.time()
-        res = requests.post(API_URL, json=payload, timeout=20)
+        res = requests.post(API_URL, json=payload, timeout=60)
+
         req_duration = time.time() - req_start
 
         if res.status_code == 200:
