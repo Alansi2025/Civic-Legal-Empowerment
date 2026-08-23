@@ -28,9 +28,82 @@ interface GeminiChatbotProps {
   loadedMessages?: ChatMessage[];
 }
 
+export const FormattedMessageText: React.FC<{ text: string }> = ({ text }) => {
+  if (!text) return null;
+
+  // Split text by line breaks
+  const paragraphs = text.split('\n');
+
+  return (
+    <div className="space-y-2.5 text-sm text-slate-200 leading-relaxed font-sans pt-1">
+      {paragraphs.map((para, idx) => {
+        const trimmed = para.trim();
+        if (!trimmed) {
+          return <div key={idx} className="h-1.5" />;
+        }
+
+        // Helper to parse **bold** text inside paragraph
+        const parseBold = (content: string) => {
+          const parts = content.split(/(\*\*.*?\*\*)/g);
+          return parts.map((part, pIdx) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return (
+                <strong key={pIdx} className="font-bold text-white">
+                  {part.slice(2, -2)}
+                </strong>
+              );
+            }
+            return part;
+          });
+        };
+
+        // Bullet point lines starting with *, •, or -
+        if (trimmed.startsWith('* ') || trimmed.startsWith('• ') || trimmed.startsWith('- ')) {
+          const bulletText = trimmed.replace(/^[\*\•\-]\s*/, '');
+          return (
+            <div key={idx} className="flex items-start gap-2.5 pl-2.5 py-2 px-3 my-1 bg-[#1E1F20]/90 rounded-xl border border-[#2A2B2D] shadow-sm">
+              <span className="text-blue-400 font-bold text-base leading-none select-none mt-0.5">•</span>
+              <div className="flex-1 text-slate-200 leading-relaxed">{parseBold(bulletText)}</div>
+            </div>
+          );
+        }
+
+        // Numbered list items like 1. 2. 3.
+        const numMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
+        if (numMatch) {
+          const num = numMatch[1];
+          const numText = numMatch[2];
+          return (
+            <div key={idx} className="flex items-start gap-2.5 pl-2.5 py-2 px-3 my-1 bg-[#1E1F20]/90 rounded-xl border border-[#2A2B2D] shadow-sm">
+              <span className="text-amber-400 font-mono font-bold text-xs px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 select-none mt-0.5">{num}</span>
+              <div className="flex-1 text-slate-200 leading-relaxed">{parseBold(numText)}</div>
+            </div>
+          );
+        }
+
+        // Section header lines starting with Emojis or Markdown headers
+        if (/^(#|⚖️|🛡️|📜|💡|📌|📋|🔎|❓|💬)/.test(trimmed)) {
+          return (
+            <div key={idx} className="font-bold text-white text-sm sm:text-base mt-3 mb-1.5 flex items-center gap-2 border-b border-[#2A2B2D] pb-1.5 text-blue-300">
+              <span>{parseBold(trimmed)}</span>
+            </div>
+          );
+        }
+
+        return (
+          <p key={idx} className="my-1.5 text-slate-200 leading-relaxed">
+            {parseBold(trimmed)}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
   initialPrompt, loadedThreadId, loadedMessages
 }) => {
+
   const [threadId, setThreadId] = useState<string>(loadedThreadId || `thread_${Date.now()}`);
   const [messages, setMessages] = useState<ChatMessage[]>(loadedMessages || []);
   const [inputPrompt, setInputPrompt] = useState('');
@@ -891,9 +964,8 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
                     <div className="flex-1 space-y-3">
                       {msg.text && (
                         <div className="space-y-2">
-                          <p className="text-sm text-slate-200 leading-relaxed font-sans pt-1">
-                            {msg.text}
-                          </p>
+                          <FormattedMessageText text={msg.text} />
+
 
                           <button
                             onClick={() => handlePlaySarvamAudio(msg.id, msg.text || '')}
