@@ -91,14 +91,17 @@ class LawStepsPipelineService(BaseAgent):
         )
 
         try:
-            res_dict = self.call_llm(
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.2,
-                response_format="json"
-            )
+            raw_res = self.call_llm(prompt)
+            clean_str = raw_res.strip()
+            if "```json" in clean_str:
+                clean_str = clean_str.split("```json")[1].split("```")[0].strip()
+            elif "```" in clean_str:
+                clean_str = clean_str.split("```")[1].split("```")[0].strip()
+            res_dict = json.loads(clean_str)
         except Exception as e:
             logger.warning(f"LawSteps LLM call failed: {e}. Returning rule-based fallback.")
             res_dict = {}
+
 
         # Fallback values if LLM output fails
         sit_law = res_dict.get("situation_and_law") or f"**Statutory Analysis ({language})**\n\nThe situation involves provisions under the Bharatiya Nyaya Sanhita (BNS 2023) and Bharatiya Nagarik Suraksha Sanhita (BNSS 2023). Under BNSS Section 173, every citizen has the statutory right to register a First Information Report (FIR) or Zero FIR at any police station."
