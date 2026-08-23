@@ -134,10 +134,10 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
 
       {/* Navigation & Saved Recents List */}
       <div className="flex-1 overflow-y-auto px-3 space-y-1 text-xs">
-        <div className="pt-2 pb-1.5 px-3 text-[11px] font-bold text-slate-400 font-mono uppercase tracking-wider flex items-center justify-between">
-          <span>Recents</span>
-          <span className="text-[10px] text-emerald-400 font-mono font-semibold">Google SQL Saved</span>
+        <div className="pt-2 pb-1.5 px-3 text-[11px] font-bold text-slate-400 font-mono uppercase tracking-wider">
+          Recents
         </div>
+
 
 
         {threads.length === 0 ? (

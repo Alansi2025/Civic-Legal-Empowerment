@@ -1,14 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { GeminiSidebar, ChatThreadItem } from '../components/GeminiSidebar';
 import { GeminiChatbot, ChatMessage } from '../components/GeminiChatbot';
 
 export default function Home() {
+  const router = useRouter();
   const [selectedPrompt, setSelectedPrompt] = useState<string | undefined>(undefined);
   const [loadedThreadId, setLoadedThreadId] = useState<string | undefined>(undefined);
   const [loadedMessages, setLoadedMessages] = useState<ChatMessage[] | undefined>(undefined);
   const [chatKey, setChatKey] = useState<number>(0);
+  const [isAuthChecked, setIsAuthChecked] = useState<boolean>(false);
+
+
+  useEffect(() => {
+    // Force show login page when citizen starts app without active session
+    const token = localStorage.getItem('user_token');
+    const user = localStorage.getItem('logged_username') || localStorage.getItem('user_name');
+    if (!token && !user) {
+      router.push('/login');
+    } else {
+      setIsAuthChecked(true);
+    }
+  }, [router]);
+
 
   const handleNewChat = () => {
     setSelectedPrompt(undefined);
