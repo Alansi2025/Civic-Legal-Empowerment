@@ -28,6 +28,15 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
 }) => {
   const router = useRouter();
   const [threads, setThreads] = useState<ChatThreadItem[]>([]);
+  const [userName, setUserName] = useState<string>('Guest Citizen');
+
+  useEffect(() => {
+    // Read logged in user name dynamically
+    const savedUser = localStorage.getItem('logged_username') || localStorage.getItem('user_name') || localStorage.getItem('user_email');
+    if (savedUser) {
+      setUserName(savedUser);
+    }
+  }, []);
 
   useEffect(() => {
     const loadThreads = async () => {
@@ -82,6 +91,20 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
   }, []);
 
 
+  const handleLogout = () => {
+    localStorage.removeItem('user_token');
+    localStorage.removeItem('logged_username');
+    localStorage.removeItem('user_name');
+    setUserName('Guest Citizen');
+    router.push('/login');
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
     <aside className="w-64 h-screen bg-[#1E1F20] text-slate-300 flex flex-col border-r border-[#2A2B2D] select-none flex-shrink-0">
       {/* Top Header & Brand */}
@@ -95,22 +118,6 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
           <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
             PRO
           </span>
-
-        </div>
-      </div>
-
-      {/* Sub-Pills: Chat vs Supervisor */}
-      <div className="px-4 mb-4">
-        <div className="bg-[#131314] p-1 rounded-xl flex items-center text-xs font-medium">
-          <button className="flex-1 py-1.5 rounded-lg bg-[#28292A] text-white text-center shadow">
-            Chat
-          </button>
-          <button
-            onClick={() => router.push('/supervisor')}
-            className="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white text-center transition-all flex items-center justify-center gap-1"
-          >
-            Supervisor
-          </button>
         </div>
       </div>
 
@@ -132,8 +139,6 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
           <span className="text-[10px] text-slate-500 font-normal">MongoDB Saved</span>
         </div>
 
-
-
         {threads.length === 0 ? (
           <p className="text-[11px] text-slate-500 px-3 py-2 italic">No past conversations saved yet.</p>
         ) : (
@@ -152,26 +157,25 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
         )}
       </div>
 
-
-      {/* User Profile Bar at Bottom */}
+      {/* User Profile Bar at Bottom with Dynamic Name */}
       <div className="p-3 border-t border-[#2A2B2D] flex items-center justify-between">
         <div
-          onClick={() => router.push('/settings')}
+          onClick={() => router.push('/login')}
           className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-all"
         >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white text-xs font-bold shadow">
-            AS
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-500 to-emerald-400 flex items-center justify-center text-white text-xs font-bold shadow border border-blue-400/30">
+            {getInitials(userName)}
           </div>
-          <div>
-            <p className="text-xs font-semibold text-white leading-tight">Aditya singh</p>
-            <span className="text-[10px] text-emerald-400 font-mono font-semibold">Civic Prototype</span>
+          <div className="overflow-hidden max-w-[110px]">
+            <p className="text-xs font-semibold text-white leading-tight truncate">{userName}</p>
+            <span className="text-[10px] text-emerald-400 font-mono font-semibold">Active Citizen</span>
           </div>
         </div>
 
         <button
-          onClick={() => router.push('/settings')}
+          onClick={handleLogout}
           className="p-1.5 rounded-lg hover:bg-[#28292A] text-slate-400 hover:text-white transition-all"
-          title="User Profile & Settings"
+          title="Sign In or Change User Account"
         >
           <Settings className="w-4 h-4" />
         </button>
@@ -179,3 +183,4 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
     </aside>
   );
 };
+

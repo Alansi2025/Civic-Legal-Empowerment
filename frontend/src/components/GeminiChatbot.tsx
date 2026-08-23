@@ -530,8 +530,11 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
           <div className="max-w-2xl w-full mx-auto space-y-8 flex flex-col items-center justify-center my-auto text-center">
             {/* Center Headline */}
             <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-snug">
-              Where should Legal Adviser AI begin?
+              {typeof window !== 'undefined' && (localStorage.getItem('logged_username') || localStorage.getItem('user_name'))
+                ? `Namaste, ${(localStorage.getItem('logged_username') || localStorage.getItem('user_name'))}! Where should Legal Adviser AI begin?`
+                : 'Where should Legal Adviser AI begin?'}
             </h1>
+
 
 
             {/* Central Floating Prompt Capsule */}
