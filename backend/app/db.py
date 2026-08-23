@@ -87,9 +87,35 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
-    
+
+    # SQL Chat Sessions Table (Google Cloud SQL / Relational Persistence)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            thread_id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+    # SQL Chat Messages Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            msg_id TEXT PRIMARY KEY,
+            thread_id TEXT NOT NULL,
+            sender TEXT NOT NULL,
+            msg_type TEXT NOT NULL,
+            text_content TEXT NOT NULL,
+            data_json TEXT,
+            timestamp_str TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (thread_id) REFERENCES chat_sessions(thread_id)
+        );
+    """)
+
     conn.commit()
     conn.close()
+
 
 
 def save_grievance_triage(grievance_id: str, citizen_id: str, raw_text: str, language: str, triage_dict: Dict[str, Any]):
@@ -166,3 +192,73 @@ def get_all_filings() -> List[Dict[str, Any]]:
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+
+def save_sql_conversation(thread_id: str, user_id: str, title: str, messages: List[Dict[str, Any]]) -> bool:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        now_str = datetime.now().isoformat()
+        cursor.execute(
+            "INSERT OR REPLACE INTO chat_sessions (thread_id, user_id, title, updated_at) VALUES (?, ?, ?, ?)",
+            (thread_id, user_id, title, now_str)
+        )
+        for msg in messages:
+            msg_id = msg.get("id") or f"msg_{int(datetime.now().timestamp()*1000)}"
+            sender = msg.get("sender", "user")
+            msg_type = msg.get("type", "text")
+            text_content = msg.get("text", "")
+            timestamp_str = msg.get("timestamp", now_str)
+            data_json = json.dumps(msg.get("data")) if msg.get("data") else None
+
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO chat_messages (msg_id, thread_id, sender, msg_type, text_content, data_json, timestamp_str)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (msg_id, thread_id, sender, msg_type, text_content, data_json, timestamp_str)
+            )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"SQL chat save error: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def get_sql_conversations(user_id: str = "guest") -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM chat_sessions ORDER BY updated_at DESC")
+        session_rows = cursor.fetchall()
+        threads = []
+        for s in session_rows:
+            thread_id = s["thread_id"]
+            cursor.execute("SELECT * FROM chat_messages WHERE thread_id = ? ORDER BY rowid ASC", (thread_id,))
+            msg_rows = cursor.fetchall()
+            msgs = []
+            for m in msg_rows:
+                msgs.append({
+                    "id": m["msg_id"],
+                    "sender": m["sender"],
+                    "type": m["msg_type"],
+                    "text": m["text_content"],
+                    "data": json.loads(m["data_json"]) if m["data_json"] else None,
+                    "timestamp": m["timestamp_str"]
+                })
+            threads.append({
+                "thread_id": thread_id,
+                "user_id": s["user_id"],
+                "title": s["title"],
+                "messages": msgs,
+                "updated_at": s["updated_at"]
+            })
+        return threads
+    except Exception as e:
+        print(f"SQL chat list fetch error: {e}")
+        return []
+    finally:
+        conn.close()
+

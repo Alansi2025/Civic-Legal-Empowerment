@@ -362,31 +362,28 @@ def login_user(payload: dict):
         raise HTTPException(status_code=500, detail="Internal server error logging in.")
 
 
-@app.post("/api/conversations/save", tags=["MongoDB Chat Persistence"])
+@app.post("/api/conversations/save", tags=["Google SQL Chat Persistence"])
 def save_conversation(payload: dict):
-    """Save or update chat conversation session thread into MongoDB."""
+    """Save or update chat conversation session thread into Google SQL Database."""
     thread_id = payload.get("thread_id") or f"thread_{int(datetime.utcnow().timestamp())}"
     user_id = payload.get("user_id", "guest")
     title = payload.get("title", "Civic Legal Conversation")
     messages = payload.get("messages", [])
 
-    try:
-        doc = save_mongodb_conversation(thread_id, user_id, title, messages)
-        return {"status": "SUCCESS", "message": "Conversation saved to MongoDB.", "thread": doc}
-    except Exception as e:
-        logger.error(f"Error saving conversation to MongoDB: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    from app.db import save_sql_conversation
+    ok = save_sql_conversation(thread_id, user_id, title, messages)
+    if ok:
+        return {"status": "SUCCESS", "message": "Conversation saved to Google SQL Database.", "thread_id": thread_id}
+    else:
+        raise HTTPException(status_code=500, detail="Error saving chat conversation to SQL database.")
 
 
-@app.get("/api/conversations/list", tags=["MongoDB Chat Persistence"])
+@app.get("/api/conversations/list", tags=["Google SQL Chat Persistence"])
 def list_conversations(user_id: str = "guest"):
-    """Fetch user's saved chat conversation threads from MongoDB."""
-    try:
-        threads = get_user_conversations(user_id)
-        return {"total": len(threads), "threads": threads}
-    except Exception as e:
-        logger.error(f"Error listing conversations from MongoDB: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    """Retrieve chat conversation sessions from Google SQL Database."""
+    from app.db import get_sql_conversations
+    threads = get_sql_conversations(user_id)
+    return {"status": "SUCCESS", "total_threads": len(threads), "threads": threads}
 
 
 @app.get("/api/conversations/{thread_id}", tags=["MongoDB Chat Persistence"])
