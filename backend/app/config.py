@@ -22,8 +22,9 @@ class Settings(BaseSettings):
     
     # Sarvam AI Configuration (Indian Languages Speech & Voice)
     SARVAM_API_KEY: Optional[str] = os.getenv("SARVAM_API_KEY", "")
-    SARVAM_STT_MODEL: str = "saarika:v2"
+    SARVAM_STT_MODEL: str = "saarika:v2.5"
     SARVAM_TTS_MODEL: str = "bulbul:v2"
+
 
 
 
