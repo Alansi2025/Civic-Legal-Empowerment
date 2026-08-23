@@ -29,13 +29,11 @@ class BaseAgent:
                 logger.warning(f"Could not initialize GenAI Client for {name}: {e}")
 
     def call_llm_with_retry(self, prompt: str, system_instruction: Optional[str] = None) -> str:
-        """Call Gemini LLM with optimized token usage and high-speed retrieval."""
+        """Call Gemini LLM with multi-tier failovers and optimized token usage."""
         if not self.client:
             raise ValueError("No GenAI client available")
 
         sys_inst = system_instruction or self.role_prompt
-
-        # Direct High-Speed Models Generate Content with optimized token bounds
         config = types.GenerateContentConfig(
             system_instruction=sys_inst,
             temperature=0.3,
@@ -43,26 +41,30 @@ class BaseAgent:
             top_p=0.9
         )
 
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=config
-            )
-            if response and response.text:
-                return response.text
-        except Exception as err:
-            logger.info(f"Primary model {self.model_name} note in {self.name}: {err}. Retrying with fallback model...")
+        candidate_models = [
+            self.model_name,
+            "gemini-2.5-flash",
+            "gemini-1.5-flash",
+            "gemini-3.5-flash-lite",
+            settings.FALLBACK_MODEL
+        ]
 
-        # Fallback to fast model
-        response = self.client.models.generate_content(
-            model=settings.FALLBACK_MODEL,
-            contents=prompt,
-            config=config
-        )
-        if response and response.text:
-            return response.text
-        raise ValueError("Empty LLM response")
+        for m_name in candidate_models:
+            if not m_name:
+                continue
+            try:
+                response = self.client.models.generate_content(
+                    model=m_name,
+                    contents=prompt,
+                    config=config
+                )
+                if response and response.text:
+                    return response.text
+            except Exception as err:
+                logger.info(f"Model {m_name} call note in {self.name}: {err}. Trying next candidate model...")
+
+        raise ValueError("All candidate LLM models returned empty or unreachable.")
+
 
 
     def call_llm(self, prompt: str, system_instruction: Optional[str] = None) -> str:
