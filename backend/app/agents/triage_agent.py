@@ -24,27 +24,24 @@ class TriageAgent(BaseAgent):
     def evaluate(self, intake: GrievanceInput) -> TriageResult:
         text_clean = intake.raw_text.strip().lower()
 
-        # Grievance indicator keywords
-        grievance_keywords = [
-            "rti", "pothole", "road", "drainage", "sewage", "garbage", "street light", "water",
-            "rent", "landlord", "tenant", "deposit", "eviction", "lease",
-            "defect", "refund", "warranty", "consumer", "cheat", "fraud", "bill",
-            "pension", "passport", "police", "fir", "bns", "ipc", "complaint", "petition",
-            "mcd", "pwd", "bbmp", "nhai", "cpgrams", "encroach", "bribe"
+        # Check if user is asking a general informational/rights question vs reporting a specific active grievance
+        informational_indicators = [
+            "what is", "what are", "explain", "how does", "tell me about", "rights", "procedure",
+            "guidelines", "rules", "definition", "can police", "is it legal", "what section", "meaning of"
         ]
-        has_grievance_kw = any(kw in text_clean for kw in grievance_keywords)
+        is_informational_query = any(phrase in text_clean for phrase in informational_indicators) and not any(
+            g_action in text_clean for g_action in ["refused", "stuck", "delay", "stole", "damaged", "cheated", "denied", "my landlord", "my road", "my deposit", "my fir"]
+        )
 
-        # Meta questions / AI Identity / Casual conversation phrases
         conversational_phrases = [
             "who are you", "tell me about yourself", "which model", "what model", "how do you work",
             "what can you do", "are you an ai", "who created you", "who made you", "your name",
-            "hi", "hello", "hey", "namaste", "good morning", "good evening", "help", "thanks", "thank you",
-            "what is this", "how are you", "what model are you working on", "model working on"
+            "hi", "hello", "hey", "namaste", "good morning", "good evening", "help", "thanks", "thank you"
         ]
         is_meta_chat = any(phrase in text_clean for phrase in conversational_phrases)
 
-        # Single-pass fast path for casual chat & greetings
-        if (is_meta_chat or not has_grievance_kw or len(text_clean) < 10) and not has_grievance_kw:
+        # Route informational questions & greetings to Conversational NLM Agent directly
+        if is_meta_chat or is_informational_query:
             from app.agents.conversational_agent import ConversationalNLMAgent
             nlm_agent = ConversationalNLMAgent()
             nlm_res = nlm_agent.process(intake)
@@ -59,22 +56,23 @@ class TriageAgent(BaseAgent):
                 nlm_info=nlm_res.get("nlm_info")
             )
 
-        # Single-pass fast path for legal grievances
+        # Single-pass classification for actual specific active grievances
         prompt = (
-            f"Citizen Grievance Text:\n\"{intake.raw_text}\"\n\n"
+            f"Citizen Input Text:\n\"{intake.raw_text}\"\n\n"
             f"Input Language: {intake.language}\n"
             f"Location Details: {intake.location_details or 'Not specified'}\n\n"
-            "Strict Instructions:\n"
-            "1. Map the grievance to the exact statutory pathway (RTI Act 2005, Consumer Protection Act 2019, Municipal Works, CPGRAMS).\n"
-            "2. Identify the target Public Body / Department / Authority.\n"
-            "3. Cite relevant legal sections.\n"
-            "4. Provide a clear, empathetic 2-3 sentence conversational guidance reply for the citizen.\n\n"
-            "Return JSON matching keys: pathway, public_authority, statutory_sections, confidence_score, summary, conversational_reply, follow_up_questions, requires_more_info."
+            "Classification Instructions:\n"
+            "1. Determine if this is a SPECIFIC ACTIVE GRIEVANCE requiring formal filing/drafting (e.g., delayed RTI, deposit withholding, defective product, refused FIR, road damage).\n"
+            "2. Map to exact statutory pathway: 'RTI Act 2005', 'Consumer Protection Act 2019', 'Municipal Public Works Grievance', or 'CPGRAMS Public Grievance'.\n"
+            "3. Identify the target Public Body / Department and relevant statutory sections.\n"
+            "4. Provide a empathetic, scannable conversational guidance reply for the citizen.\n\n"
+            "Return JSON matching keys: pathway, public_authority, statutory_sections, confidence_score, summary, is_conversational, conversational_reply, follow_up_questions, requires_more_info."
         )
 
         raw_response = self.call_llm(prompt)
         triage_res = self._parse_and_refine(raw_response, intake.raw_text, intake.location_details)
         return triage_res
+
 
 
 

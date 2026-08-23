@@ -43,12 +43,13 @@ class BaseAgent:
 
         candidate_models = [
             self.model_name,
-            "gemini-3.6-flash",
-            "gemini-3.5-flash-lite",
             "gemma-4-31b-it",
             "gemma-4-26b-a4b-it",
+            "gemini-3.6-flash",
+            "gemini-3.5-flash-lite",
             settings.FALLBACK_MODEL
         ]
+
 
 
         for m_name in candidate_models:

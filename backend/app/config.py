@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY", "")
     DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL", "gemma-4-31b-it")
     FALLBACK_MODEL: str = os.getenv("FALLBACK_MODEL", "gemma-4-26b-a4b-it")
+
     GEMMA_4_DENSE: str = "gemma-4-31b-it"
     GEMMA_4_MOE: str = "gemma-4-26b-a4b-it"
     GEMMA_4_FAST: str = "gemma-4-12e-it"
