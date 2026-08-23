@@ -983,17 +983,20 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
                               }}
                               className="flex-1 py-2.5 rounded-xl bg-[#28292A] hover:bg-[#37393B] border border-[#37393B] text-slate-200 font-bold text-xs shadow flex items-center justify-center gap-1.5 transition-all"
                             >
-                              💬 Provide Details in Chat
+                              💬 Reply in Chat
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleGenerateDraft(msg.data)}
-                              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow flex items-center justify-center gap-2 transition-all"
-                            >
-                              <FileText className="w-4 h-4" />
-                              Draft Statutory Legal Petition
-                            </button>
+                            {(activeIntake?.raw_text.toLowerCase().match(/(draft|petition|file|write complaint|rti application)/) || msg.data?.nlm_info?.is_grievance_ready) && (
+                              <button
+                                type="button"
+                                onClick={() => handleGenerateDraft(msg.data)}
+                                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow flex items-center justify-center gap-2 transition-all"
+                              >
+                                <FileText className="w-4 h-4" />
+                                Draft Statutory Legal Petition
+                              </button>
+                            )}
                           </div>
+
                         </div>
                       )}
 

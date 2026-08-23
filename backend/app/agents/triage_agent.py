@@ -65,8 +65,10 @@ class TriageAgent(BaseAgent):
             "1. Determine if this is a SPECIFIC ACTIVE GRIEVANCE requiring formal filing/drafting (e.g., delayed RTI, deposit withholding, defective product, refused FIR, road damage).\n"
             "2. Map to exact statutory pathway: 'RTI Act 2005', 'Consumer Protection Act 2019', 'Municipal Public Works Grievance', or 'CPGRAMS Public Grievance'.\n"
             "3. Identify the target Public Body / Department and relevant statutory sections.\n"
-            "4. Provide a empathetic, scannable conversational guidance reply for the citizen.\n\n"
+            "4. Provide a empathetic, scannable conversational guidance reply for the citizen.\n"
+            "5. STRICT RULE: Do NOT suggest, prompt, or ask the citizen to file an RTI or draft a statutory petition unless the citizen explicitly asks to draft/file one in their query.\n\n"
             "Return JSON matching keys: pathway, public_authority, statutory_sections, confidence_score, summary, is_conversational, conversational_reply, follow_up_questions, requires_more_info."
+
         )
 
         raw_response = self.call_llm(prompt)
