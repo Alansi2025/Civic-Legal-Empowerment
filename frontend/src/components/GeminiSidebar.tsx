@@ -136,8 +136,9 @@ export const GeminiSidebar: React.FC<GeminiSidebarProps> = ({
       <div className="flex-1 overflow-y-auto px-3 space-y-1 text-xs">
         <div className="pt-2 pb-1.5 px-3 text-[11px] font-bold text-slate-400 font-mono uppercase tracking-wider flex items-center justify-between">
           <span>Recents</span>
-          <span className="text-[10px] text-slate-500 font-normal">MongoDB Saved</span>
+          <span className="text-[10px] text-emerald-400 font-mono font-semibold">Google SQL Saved</span>
         </div>
+
 
         {threads.length === 0 ? (
           <p className="text-[11px] text-slate-500 px-3 py-2 italic">No past conversations saved yet.</p>

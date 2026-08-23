@@ -532,8 +532,9 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
             <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-snug">
               {typeof window !== 'undefined' && (localStorage.getItem('logged_username') || localStorage.getItem('user_name'))
                 ? `Namaste, ${(localStorage.getItem('logged_username') || localStorage.getItem('user_name'))}! Where should Legal Adviser AI begin?`
-                : 'Where should Legal Adviser AI begin?'}
+                : 'Namaste! Where should Legal Adviser AI begin?'}
             </h1>
+
 
 
 
